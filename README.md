@@ -1,11 +1,11 @@
 ### CraveCart
 
-1. Introduction
+## Introduction
 CraveCart is a web-based food delivery platform designed to connect customers with local home-based food businesses, often referred to as cloud kitchens. It aims to empower passionate cooks—especially homemakers or aspiring entrepreneurs—who are unable to start traditional food businesses due to financial, personal, or logistical constraints.
 
 By providing a platform where only verified home kitchens can register and offer meals, CraveCart creates a trusted environment that delivers hygienic, authentic, and home-cooked food directly to customers’ doorsteps.
 
-2. Problem Statement
+## Problem Statement
 Many talented home cooks are eager to turn their skills into a livelihood but are held back by high startup costs, limited access to commercial spaces, or responsibilities that prevent them from working outside the home. Meanwhile, consumers are increasingly skeptical of restaurant hygiene and seek healthier alternatives.
 
 CraveCart solves these issues by:
@@ -16,7 +16,7 @@ Enabling customers to find nearby kitchens through location-based discovery.
 
 Emphasizing trust, hygiene, and a sense of community in food services.
 
-3. Solution
+## Solution
 CraveCart serves as a bridge between home chefs and customers looking for real, wholesome food. The app includes the following features:
 
 Core Features
@@ -49,7 +49,7 @@ Supports small-scale entrepreneurs and homemakers.
 
 Offers a revenue stream for individuals who may not have other employment options.
 
-4. Technologies Used
+## Technologies Used
 ## Frontend
 React: To build a responsive, user-friendly interface.
 
@@ -77,7 +77,7 @@ Frontend: Deployed using Netlify or Vercel.
 
 Backend: Hosted on Render or Heroku for scalability.
 
-5. Risks and Solutions
+## Risks and Solutions
 Challenge	Solution
 Verifying kitchen hygiene	Manual vetting and hygiene guidelines during registration
 Limited delivery radius	Real-time geolocation to only show viable nearby kitchens
@@ -85,7 +85,7 @@ Building customer trust	Kitchen ratings, customer reviews, and verification indi
 Scalability	Cloud-based deployment with modular architecture for future scaling
 Competing with large food apps	Focus on home-cooked niche and community-first branding
 
-6. Conclusion
+## Conclusion
 CraveCart is more than just a food delivery app—it's a platform for social impact. By enabling home chefs to showcase their culinary talents and earn income from their kitchens, it empowers small-scale entrepreneurship. At the same time, customers gain access to healthy, hygienic, and authentic meals that bring the comfort of homemade food into their lives.
 
 With its use of modern technology and a community-driven approach, CraveCart creates a trustworthy, scalable alternative to mainstream food delivery services, while fostering connection, culture, and care—one meal at a time.
