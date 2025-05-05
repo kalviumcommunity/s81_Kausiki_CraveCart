@@ -14,7 +14,7 @@
 
   // Signup Page (GET)
   userRouter.get("/signup", (req, res) => {
-    res.status(200).send("Signup Page");
+    res.status1(200).send("Signup Page");
   });
 
   // Signup (POST)
