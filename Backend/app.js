@@ -2,6 +2,7 @@ const express = require('express');
 const app = express();
 const {userRouter}=require('./controllers/userRoutes')
 const middleware=require('./middleware/error')
+require('./config/passport')
 
 app.use(express.json());
 
