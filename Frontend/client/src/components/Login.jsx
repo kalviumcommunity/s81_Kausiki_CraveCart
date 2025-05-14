@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import GoogleButton from "./GoogleButton";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -97,6 +98,9 @@ const Login = () => {
           onClick={() => navigate("/signup")}
         >
           Register here
+          <p>
+            <GoogleButton/>
+          </p>
         </span>
       </motion.footer>
     </motion.div>
