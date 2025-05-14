@@ -19,6 +19,21 @@
     res.status1(200).send("Signup Page");
   });
 
+  // GET: Fetch All Users (Admin Only or for Development)
+userRouter.get(
+  "/all-users",
+  catchAsyncError(async (req, res, next) => {
+    const users = await UserModel.find().select("-password"); // Don't return passwords
+
+    res.status(200).json({
+      success: true,
+      count: users.length,
+      users,
+    });
+  })
+);
+
+
   // Signup (POST)
   userRouter.post(
     "/signup",
