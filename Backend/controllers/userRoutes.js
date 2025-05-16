@@ -132,18 +132,18 @@
         return next(new ErrorHandler("Invalid credentials", 400));
       }
 
-      const token = jwt.sign({ id: user._id }, process.env.SECRET, {
-        expiresIn: "30d", // 30 days
-      });
+        const token = jwt.sign({ id: user._id }, process.env.SECRET, {
+          expiresIn: "30d", // 30 days
+        });
 
-      res.cookie("accesstoken", token, {
-        httpOnly: true,
-        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days in milliseconds
-      });
+        res.cookie("accesstoken", token, {
+          httpOnly: true,
+          maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days in milliseconds
+        });
 
-      res.status(200).json({ status: true, message: "Login successful" });
-    })
-  );
+        res.status(200).json({ status: true, message: "Login successful" });
+      })
+    );
 
   // Helper: Send OTP Email
   async function sendOTP(email, otp) {
