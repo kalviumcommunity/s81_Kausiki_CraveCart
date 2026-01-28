@@ -25,7 +25,7 @@
           name,
           email,
           password: '', 
-          role: 'user',
+          role: 'customer',
           isActivated: true,
         });
         await user.save();

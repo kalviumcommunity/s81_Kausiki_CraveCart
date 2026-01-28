@@ -1,1 +1,185 @@
 @import "tailwindcss";
+
+:root {
+	color-scheme: light;
+
+	/* CraveCart UI palette */
+	--cc-cream: #fff7ed;
+	--cc-white: #ffffff;
+	--cc-text: #1f2933;
+	--cc-muted: #6b7280;
+	--cc-accent: #f97316;
+	--cc-border: #e5e7eb;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+	min-height: 100vh;
+	background: radial-gradient(circle at 20% 15%, rgba(249, 115, 22, 0.12), transparent 28%),
+		radial-gradient(circle at 75% 10%, rgba(220, 38, 38, 0.10), transparent 30%),
+		linear-gradient(180deg, var(--cc-cream) 0%, #fff 100%);
+	color: var(--cc-text);
+	font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	line-height: 1.6;
+	-webkit-font-smoothing: antialiased;
+}
+
+a {
+	color: var(--cc-accent);
+}
+
+input,
+select,
+textarea,
+button {
+	font: inherit;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="reset"]),
+select,
+textarea {
+	background-color: var(--cc-white);
+	border: 1px solid var(--cc-border);
+	border-radius: 0.75rem;
+	color: var(--cc-text);
+	caret-color: var(--cc-text);
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="reset"])::placeholder,
+textarea::placeholder {
+	color: var(--cc-muted);
+	opacity: 0.85;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="reset"]):focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+	outline: none;
+	border-color: rgba(249, 115, 22, 0.7);
+	box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.22);
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="reset"])::selection,
+textarea::selection {
+	background: rgba(249, 115, 22, 0.25);
+	color: var(--cc-text);
+}
+
+/* Keep browser autofill readable (Chrome/Edge/Safari) */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="reset"]):-webkit-autofill,
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="reset"]):-webkit-autofill:hover,
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="reset"]):-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+	-webkit-text-fill-color: var(--cc-text);
+	caret-color: var(--cc-text);
+	box-shadow: 0 0 0px 1000px var(--cc-cream) inset;
+	transition: background-color 9999s ease-in-out 0s;
+}
+
+/* Ensure auth inputs keep readable text colors even with browser autofill */
+.auth-input,
+.auth-input:focus {
+	color: var(--cc-text);
+	caret-color: var(--cc-text);
+}
+
+.auth-input::placeholder {
+	color: var(--cc-muted);
+}
+
+.auth-input:-webkit-autofill,
+.auth-input:-webkit-autofill:hover,
+.auth-input:-webkit-autofill:focus,
+.auth-input:-webkit-autofill:active {
+	-webkit-text-fill-color: var(--cc-text);
+	caret-color: var(--cc-text);
+	box-shadow: 0 0 0px 1000px var(--cc-cream) inset;
+	transition: background-color 9999s ease-in-out 0s;
+}
+
+::selection {
+	background: rgba(249, 115, 22, 0.25);
+	color: var(--cc-text);
+}
+
+::-webkit-scrollbar {
+	width: 10px;
+	height: 10px;
+}
+
+::-webkit-scrollbar-track {
+	background: #fff;
+}
+
+::-webkit-scrollbar-thumb {
+	background: #e5e7eb;
+	border-radius: 9999px;
+	border: 2px solid #fff;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background: #d1d5db;
+}
+
+@layer components {
+	.cc-page {
+		@apply min-h-screen px-6 py-8 text-[#1F2933];
+	}
+
+	.cc-page-lg {
+		@apply min-h-screen px-6 py-10 text-[#1F2933];
+	}
+
+	.cc-container {
+		@apply mx-auto w-full max-w-5xl;
+	}
+
+	.cc-card {
+		@apply rounded-2xl bg-white/90 border border-black/5 shadow-lg shadow-black/5;
+	}
+
+	.cc-card-pad {
+		@apply rounded-2xl bg-white/90 border border-black/5 shadow-lg shadow-black/5 p-6;
+	}
+
+	.cc-muted {
+		@apply text-[#6B7280];
+	}
+
+	.cc-btn {
+		@apply inline-flex items-center justify-center gap-2 rounded-full font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#F97316]/40;
+	}
+
+	.cc-btn-primary {
+		@apply inline-flex items-center justify-center gap-2 rounded-full font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#F97316]/40 bg-[#F97316] text-[#1F2933] hover:bg-[#F97316]/90;
+	}
+
+	.cc-btn-secondary {
+		@apply inline-flex items-center justify-center gap-2 rounded-full font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#F97316]/40 bg-white text-[#1F2933] border border-[#E5E7EB] hover:bg-white/80;
+	}
+
+	.cc-btn-danger {
+		@apply inline-flex items-center justify-center gap-2 rounded-full font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#F97316]/40 bg-[#B91C1C] text-white hover:bg-[#B91C1C]/90;
+	}
+
+	.cc-link {
+		@apply font-semibold text-[#F97316] hover:text-[#DC2626];
+	}
+
+	.cc-alert-error {
+		@apply rounded-xl border border-[#B91C1C]/25 bg-[#B91C1C]/10 px-4 py-3 text-sm text-[#B91C1C];
+	}
+
+	.cc-alert-success {
+		@apply rounded-xl border border-[#15803D]/25 bg-[#15803D]/10 px-4 py-3 text-sm text-[#15803D];
+	}
+}

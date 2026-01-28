@@ -1,22 +1,41 @@
     const express = require("express")
     const {UserModel} = require("../model/userModel");
     const ErrorHandler = require("../utils/errorhadler");
-    const bcrypt = require("bcrypt");
-    const nodemailer = require("nodemailer");
+    const bcrypt = require("bcryptjs");
     const jwt = require("jsonwebtoken");
-    const crypto = require("crypto");
-    const { sendMail } = require("../utils/mail");
     const catchAsyncError = require("../middleware/catchAsyncError");
     const passport=require('passport')
+    const { requireAuth } = require("../middleware/auth");
+    const { KitchenModel } = require("../model/kitchenModel");
+    const { sendMail } = require("../utils/mail");
+    const { ADMIN_STATIC_EMAIL, ADMIN_STATIC_PASSWORD, isAdminEmail, normalizeEmail } = require("../utils/adminAccess");
 
 
     const userRouter = express.Router();
-    const otpStore = new Map();
     require("dotenv").config();
+
+    const resolveRoleForUser = async (user) => {
+      const email = normalizeEmail(user.email);
+      const ownsKitchen = Boolean(await KitchenModel.exists({ ownerUserId: user._id }));
+
+      let role = "customer";
+      if (isAdminEmail(email)) {
+        role = "admin";
+      } else if (ownsKitchen) {
+        role = "kitchen";
+      }
+
+      if (user.role !== role) {
+        user.role = role;
+        await user.save();
+      }
+
+      return { role, ownsKitchen };
+    };
 
     // Signup Page (GET)
     userRouter.get("/signup", (req, res) => {
-      res.status1(200).send("Signup Page");
+      res.status(200).send("Signup Page");
     });
 
       // GET: Fetch All Users (Admin Only or for Development)
@@ -57,58 +76,99 @@
           );
         }
 
-        const user = await userModel.findOne({ email });
+        const normalizedEmail = normalizeEmail(email);
+
+        const user = await UserModel.findOne({ email: normalizedEmail });
         if (user) {
           return next(new ErrorHandler("User already exists", 400));
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        const otp = crypto.randomInt(100000, 999999).toString();
 
-        otpStore.set(email, {
-          otp,
+        await UserModel.create({
           name,
-          hashedPassword,
-          expiresAt: Date.now() + 5 * 60 * 1000, // 5 minutes
+          email: normalizedEmail,
+          password: hashedPassword,
         });
 
-        await sendOTP(email, otp);
-        res.status(200).json({ success: true, message: "OTP sent to your email" });
+        res.status(201).json({ success: true, message: "Signup successful" });
       })
     );
 
-    // Verify OTP (POST)
+    // Forgot password: send reset link
     userRouter.post(
-      "/verify-otp",
+      "/forgot-password",
       catchAsyncError(async (req, res, next) => {
-        const { email, otp } = req.body;
+        const { email } = req.body;
+        if (!email) return next(new ErrorHandler("Email is required", 400));
 
-        if (!email || !otp) {
-          return next(new ErrorHandler("All fields are required", 400));
+        const normalizedEmail = normalizeEmail(email);
+        const user = await UserModel.findOne({ email: normalizedEmail });
+
+        // Always respond success to avoid leaking which emails exist
+        const frontendBase = process.env.FRONTEND_URL || "http://localhost:5173";
+        const dummyResponse = () =>
+          res.status(200).json({ success: true, message: "If that account exists, a reset link was sent." });
+
+        if (!user) return dummyResponse();
+
+        if (!process.env.SECRET) return next(new ErrorHandler("Server auth misconfigured (SECRET missing)", 500));
+
+        const resetToken = jwt.sign({ id: user._id, type: "reset" }, process.env.SECRET, { expiresIn: "15m" });
+        const resetLink = `${frontendBase}/reset-password?token=${encodeURIComponent(resetToken)}`;
+
+        try {
+          await sendMail({
+            email: user.email,
+            subject: "Reset your CraveCart password",
+            message: `Use this link to reset your password (valid 15 minutes): ${resetLink}`,
+          });
+        } catch (mailErr) {
+          console.error("Reset mail send failed", mailErr);
+          // Still respond success to avoid leaking, but log server-side
         }
 
-        const storedData = otpStore.get(email);
-        if (!storedData) {
-          return next(new ErrorHandler("OTP expired or not requested", 400));
+        return dummyResponse();
+      })
+    );
+
+    // Reset password
+    userRouter.post(
+      "/reset-password",
+      catchAsyncError(async (req, res, next) => {
+        const { token, newPassword } = req.body;
+        if (!token || !newPassword) return next(new ErrorHandler("token and newPassword are required", 400));
+
+        if (!newPassword.match(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*?&]{8,}$/)) {
+          return next(
+            new ErrorHandler(
+              "Password must be at least 8 characters long and contain at least one letter and one number",
+              400
+            )
+          );
         }
 
-        if (Date.now() > storedData.expiresAt) {
-          otpStore.delete(email);
-          return next(new ErrorHandler("OTP has expired", 400));
+        if (!process.env.SECRET) return next(new ErrorHandler("Server auth misconfigured (SECRET missing)", 500));
+
+        let decoded;
+        try {
+          decoded = jwt.verify(token, process.env.SECRET);
+        } catch (err) {
+          return next(new ErrorHandler("Invalid or expired reset token", 400));
         }
 
-        if (storedData.otp !== otp) {
-          return next(new ErrorHandler("Invalid OTP", 400));
+        if (!decoded || decoded.type !== "reset") {
+          return next(new ErrorHandler("Invalid reset token", 400));
         }
 
-        const newUser = await userModel.create({
-          name: storedData.name,
-          email,
-          password: storedData.hashedPassword,
-        });
+        const user = await UserModel.findById(decoded.id);
+        if (!user) return next(new ErrorHandler("User not found", 404));
 
-        otpStore.delete(email);
-        res.status(200).json({ success: true, message: "Signup successful" });
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        user.password = hashedPassword;
+        await user.save();
+
+        res.status(200).json({ success: true, message: "Password reset successful" });
       })
     );
 
@@ -122,17 +182,33 @@
           return next(new ErrorHandler("Email and password are required", 400));
         }
 
-        const user = await userModel.findOne({ email });
-        if (!user) {
-          return next(new ErrorHandler("Invalid credentials", 400));
-        }
+        const normalizedEmail = normalizeEmail(email);
+        let user = await UserModel.findOne({ email: normalizedEmail });
 
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-          return next(new ErrorHandler("Invalid credentials", 400));
-        }
+        // Static admin credential shortcut
+        if (normalizedEmail === ADMIN_STATIC_EMAIL && password === ADMIN_STATIC_PASSWORD) {
+          if (!user) {
+            const hashedPassword = await bcrypt.hash(ADMIN_STATIC_PASSWORD, 10);
+            user = await UserModel.create({
+              name: "Admin",
+              email: normalizedEmail,
+              password: hashedPassword,
+              role: "admin",
+              isActivated: true,
+            });
+          } else {
+            const updates = {};
+            if (user.role !== "admin") updates.role = "admin";
+            const hasMatch = user.password ? await bcrypt.compare(ADMIN_STATIC_PASSWORD, user.password) : false;
+            if (!hasMatch) updates.password = await bcrypt.hash(ADMIN_STATIC_PASSWORD, 10);
+            if (Object.keys(updates).length > 0) {
+              user = await UserModel.findByIdAndUpdate(user._id, { $set: updates }, { new: true });
+            }
+          }
 
-          const token = jwt.sign({ id: user._id }, process.env.SECRET, {
+          const { role } = await resolveRoleForUser(user);
+
+          const token = jwt.sign({ id: user._id, role }, process.env.SECRET, {
             expiresIn: "30d", // 30 days
           });
 
@@ -141,28 +217,82 @@
             maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days in milliseconds
           });
 
-          res.status(200).json({ status: true, message: "Login successful" });
+          return res.status(200).json({
+            success: true,
+            message: "Login successful",
+            token: token,
+            user: {
+              id: user._id,
+              name: user.name,
+              email: user.email,
+              role,
+            },
+          });
+        }
+
+        if (!user) {
+          return next(new ErrorHandler("Invalid credentials", 400));
+        }
+
+        if (!user.password) {
+          return next(new ErrorHandler("Please login with Google for this account", 400));
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+          return next(new ErrorHandler("Invalid credentials", 400));
+        }
+
+          const { role } = await resolveRoleForUser(user);
+
+          const token = jwt.sign({ id: user._id, role }, process.env.SECRET, {
+            expiresIn: "30d", // 30 days
+          });
+
+          res.cookie("accesstoken", token, {
+            httpOnly: true,
+            maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days in milliseconds
+          });
+
+          res.status(200).json({ 
+            success: true, 
+            message: "Login successful",
+            token: token,
+            user: {
+              id: user._id,
+              name: user.name,
+              email: user.email,
+              role,
+            }
+          });
         })
       );
 
     // Helper: Send OTP Email
     async function sendOTP(email, otp) {
-      const transporter = nodemailer.createTransport({
-        service: "Gmail",
-        auth: {
-          user: process.env.ADMIN_NAME,
-          pass: process.env.ADMIN_PASSWORD,
-        },
-      });
-
-      await transporter.sendMail({
-        from: `CraveCart <${process.env.ADMIN_NAME}>`,
-        to: email,
-        subject: "Your OTP for Signup",
-        text:`Your OTP is: ${otp}. It is valid for 5 minutes.`,
-      });
+      try {
+        await sendMail({
+          email: email,
+          subject: "Your OTP for Signup",
+          message: `Your OTP is: ${otp}. It is valid for 5 minutes.`
+        });
+      } catch (error) {
+        console.error("Error sending OTP:", error);
+        throw error;
+      }
     }
 
+
+    const getSafeFrontendBase = (value) => {
+      const fallback = process.env.FRONTEND_URL || "http://localhost:5173";
+      if (!value || typeof value !== "string") return fallback;
+
+      // Allow only local dev origins to avoid open redirects
+      if (/^http:\/\/localhost:\d+$/.test(value) || /^http:\/\/127\.0\.0\.1:\d+$/.test(value)) {
+        return value;
+      }
+      return fallback;
+    };
 
     const googleAuthCallback = async (req, res) => {
       try {
@@ -173,8 +303,7 @@
           return res.status(400).json({ message: 'Email is required for authentication' });
         }
 
-
-        const email = emails[0].value;
+        const email = normalizeEmail(emails[0].value);
         const name = displayName;
 
         
@@ -185,23 +314,30 @@
             name,
             email,
             password: null,
-            role: 'user' ,
+            role: 'customer' ,
             isActivated: true,
           });
           await existingUser.save();
         }
 
+        const { role } = await resolveRoleForUser(existingUser);
 
-      
-        const token = jwt.sign({ id: existingUser._id, role: existingUser.role }, process.env.SECRET, { expiresIn: "24h" });
+        const token = jwt.sign(
+          { id: existingUser._id, role },
+          process.env.SECRET,
+          { expiresIn: "30d" }
+        );
 
         res.cookie("accesstoken", token, {
           httpOnly: true,
           secure: false,
           sameSite: "lax",
+          maxAge: 30 * 24 * 60 * 60 * 1000,
         });
 
-        res.redirect(`http://localhost:5173/google-success?token=${token}`);
+  const frontendBase = getSafeFrontendBase(req.query.state);
+  const redirectUrl = `${frontendBase}/google-success?token=${encodeURIComponent(token)}&role=${encodeURIComponent(role)}`;
+  res.redirect(redirectUrl);
 
       } catch (err) {
         console.error("Google Auth Error:", err);
@@ -211,13 +347,26 @@
 
 
 
-
-      userRouter.get("/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+      userRouter.get(
+        "/google",
+        (req, res, next) => {
+          // Accept frontend origin from query string and send it back via OAuth 'state'
+          req._frontendBase = getSafeFrontendBase(req.query.returnTo);
+          passport.authenticate("google", {
+            scope: ["profile", "email"],
+            session: false,
+            state: req._frontendBase,
+          })(req, res, next);
+        }
+      );
 
 
       userRouter.get(
         "/google/callback",
-        passport.authenticate("google", { session: false, failureRedirect: "http://localhost:5173/login" }),
+        passport.authenticate("google", {
+          session: false,
+          failureRedirect: `${process.env.FRONTEND_URL || "http://localhost:5173"}/login`,
+        }),
 
         (req, res, next) => {
         
@@ -226,6 +375,16 @@
         },
         googleAuthCallback
       );
+
+
+    // Current user (auth check)
+    userRouter.get(
+      "/me",
+      requireAuth,
+      catchAsyncError(async (req, res) => {
+        res.status(200).json({ success: true, user: req.user });
+      })
+    );
 
 
 

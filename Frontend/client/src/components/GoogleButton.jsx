@@ -9,7 +9,8 @@ function GoogleButton() {
   const handleGoogleSignIn = () => {
     setLoading(true);
     setTimeout(() => {
-      window.location.href = "http://localhost:1111/user/google";
+      const returnTo = encodeURIComponent(window.location.origin);
+      window.location.href = `http://localhost:1111/user/google?returnTo=${returnTo}`;
     }, 500); 
   };
 
@@ -21,6 +22,7 @@ function GoogleButton() {
       className="w-full"
     >
       <motion.button
+        type="button"
         onClick={handleGoogleSignIn}
         whileHover={!loading && { scale: 1.03, boxShadow: "0 4px 14px rgba(0,0,0,0.1)" }}
         whileTap={!loading && { scale: 0.97 }}
