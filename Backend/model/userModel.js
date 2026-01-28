@@ -14,13 +14,26 @@
             type: String,
             required: false
         },
+        role: {
+            type: String,
+            enum: ["customer", "kitchen", "admin"],
+            default: "customer"
+        },
+        isActivated: {
+            type: Boolean,
+            default: true
+        },
         phone: {
             type: String
         },
         address: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Address"  
-        }
+        },
+        favoriteKitchens: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Kitchen"
+        }]
     });
 
     const UserModel = mongoose.model("User", userSchema);
