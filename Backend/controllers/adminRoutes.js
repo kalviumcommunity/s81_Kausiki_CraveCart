@@ -13,6 +13,8 @@ const { RatingModel } = require("../model/ratingModel");
 const { ComplaintModel } = require("../model/complaintModel");
 const { AnnouncementModel } = require("../model/announcementModel");
 const { SettingModel } = require("../model/settingModel");
+const { SubscriptionPlanModel } = require("../model/subscriptionPlanModel");
+const { UserSubscriptionModel } = require("../model/userSubscriptionModel");
 
 const adminRouter = express.Router();
 
@@ -361,6 +363,16 @@ adminRouter.get(
   })
 );
 
+adminRouter.delete(
+  "/reviews/:id",
+  catchAsyncError(async (req, res, next) => {
+    const review = await RatingModel.findByIdAndDelete(req.params.id);
+    if (!review) return next(new ErrorHandler("Review not found", 404));
+
+    res.status(200).json({ success: true, review });
+  })
+);
+
 // ADMIN: complaints and policy violations
 adminRouter.get(
   "/complaints",
@@ -518,6 +530,85 @@ adminRouter.put(
     );
 
     res.status(200).json({ success: true, setting });
+  })
+);
+
+// ADMIN: subscription plans
+adminRouter.get(
+  "/subscription-plans",
+  catchAsyncError(async (req, res) => {
+    const plans = await SubscriptionPlanModel.find({}).sort({ planType: 1, mealsPerDay: 1 });
+    res.status(200).json({ success: true, plans });
+  })
+);
+
+adminRouter.post(
+  "/subscription-plans",
+  catchAsyncError(async (req, res, next) => {
+    const { planType, mealsPerDay, price, isActive = true } = req.body;
+
+    if (!planType || !["weekly", "monthly"].includes(planType)) {
+      return next(new ErrorHandler("planType must be weekly or monthly", 400));
+    }
+    if (!Number.isFinite(Number(mealsPerDay))) {
+      return next(new ErrorHandler("mealsPerDay is required", 400));
+    }
+    if (!Number.isFinite(Number(price))) {
+      return next(new ErrorHandler("price is required", 400));
+    }
+
+    const plan = await SubscriptionPlanModel.create({
+      planType,
+      mealsPerDay: Number(mealsPerDay),
+      price: Number(price),
+      isActive: Boolean(isActive),
+    });
+
+    res.status(201).json({ success: true, plan });
+  })
+);
+
+adminRouter.patch(
+  "/subscription-plans/:id",
+  catchAsyncError(async (req, res, next) => {
+    const { planType, mealsPerDay, price, isActive } = req.body;
+    const update = {};
+
+    if (planType) {
+      if (!["weekly", "monthly"].includes(planType)) {
+        return next(new ErrorHandler("planType must be weekly or monthly", 400));
+      }
+      update.planType = planType;
+    }
+    if (typeof mealsPerDay !== "undefined") update.mealsPerDay = Number(mealsPerDay);
+    if (typeof price !== "undefined") update.price = Number(price);
+    if (typeof isActive === "boolean") update.isActive = isActive;
+
+    if (Object.keys(update).length === 0) {
+      return next(new ErrorHandler("No update fields provided", 400));
+    }
+
+    const plan = await SubscriptionPlanModel.findByIdAndUpdate(req.params.id, { $set: update }, { new: true });
+    if (!plan) return next(new ErrorHandler("Plan not found", 404));
+
+    res.status(200).json({ success: true, plan });
+  })
+);
+
+adminRouter.get(
+  "/subscriptions",
+  catchAsyncError(async (req, res) => {
+    const { status, limit = 200 } = req.query;
+    const query = {};
+    if (status && ["active", "cancelled", "expired"].includes(status)) query.status = status;
+
+    const subscriptions = await UserSubscriptionModel.find(query)
+      .populate("userId", "name email role")
+      .populate("planId", "planType mealsPerDay price isActive")
+      .sort({ createdAt: -1 })
+      .limit(Math.min(Number(limit) || 200, 500));
+
+    res.status(200).json({ success: true, subscriptions });
   })
 );
 

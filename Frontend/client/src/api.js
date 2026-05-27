@@ -1,5 +1,14 @@
 const API_BASE = "http://localhost:1111";
 
+export function resolveUploadUrl(urlPath) {
+  if (!urlPath) return "";
+  if (/^https?:\/\//i.test(urlPath)) return urlPath;
+  if (urlPath.startsWith("/uploads/")) {
+    return `${API_BASE}${urlPath}`;
+  }
+  return urlPath;
+}
+
 export async function apiFetch(path, options = {}) {
   const token = localStorage.getItem("token");
 

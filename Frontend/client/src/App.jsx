@@ -17,6 +17,8 @@ import { getRedirectForRole, getStoredRole } from './roleUtils';
 import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './components/ResetPassword';
 import ManageMenu from './components/ManageMenu';
+import Profile from './components/Profile';
+import Offers from './components/Offers';
 
 function isAuthed() {
   return Boolean(localStorage.getItem('token'));
@@ -62,6 +64,8 @@ function App() {
             <Route path="/kitchens/:id" element={<RequireAuth><KitchenDetail /></RequireAuth>} />
             <Route path="/subscriptions" element={<RequireAuth><Subscriptions /></RequireAuth>} />
             <Route path="/my-orders" element={<RequireAuth><MyOrders /></RequireAuth>} />
+            <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
+            <Route path="/offers" element={<RequireAuth><Offers /></RequireAuth>} />
             <Route
               path="/register-kitchen"
               element={

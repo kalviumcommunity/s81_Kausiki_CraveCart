@@ -1,16 +1,57 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { apiFetch } from "../api";
 
 const BrowseKitchens = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [kitchens, setKitchens] = useState([]);
   const [favorites, setFavorites] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const offersOnly = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get("offers") === "1";
+  }, [location.search]);
+
   const favoriteIds = useMemo(() => new Set((favorites || []).map((k) => String(k._id))), [favorites]);
+
+  const filteredKitchens = useMemo(() => {
+    const q = String(searchQuery || "").trim().toLowerCase();
+    const parts = q ? q.split(/\s+/).filter(Boolean) : [];
+
+    const matchesOffer = (k) => {
+      if (!k) return false;
+      // Prefer explicit fields if they exist now or later.
+      if (k.hasOffer === true) return true;
+      if (k.offer === true) return true;
+      if (typeof k.offerText === "string" && k.offerText.trim()) return true;
+      if (typeof k.offerTitle === "string" && k.offerTitle.trim()) return true;
+      if (typeof k.discount === "number" && k.discount > 0) return true;
+      if (typeof k.discountPercent === "number" && k.discountPercent > 0) return true;
+
+      // Fallback heuristic: look for offer-y keywords in description/name.
+      const text = [k?.name, k?.description, k?.addressText]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return /(offer|discount|deal|%\s*off|\boff\b|save\b)/.test(text);
+    };
+
+    return (kitchens || []).filter((k) => {
+      if (offersOnly && !matchesOffer(k)) return false;
+      const haystack = [k?.name, k?.description, k?.addressText, k?.pincode]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      if (!parts.length) return true;
+      return parts.every((p) => haystack.includes(p));
+    });
+  }, [kitchens, searchQuery, offersOnly]);
 
   const load = async () => {
     setLoading(true);
@@ -60,14 +101,56 @@ const BrowseKitchens = () => {
           </button>
         </div>
 
+        <div className="mb-6">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative w-full sm:max-w-lg">
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search kitchens by name, description, address, or pincode..."
+                className="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 pr-10 text-sm text-[#1F2933] shadow-sm shadow-black/5 focus:outline-none focus:ring-2 focus:ring-[#F97316]/30 focus:border-[#F97316]"
+              />
+              {searchQuery ? (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-xl px-2 py-1 text-[#6B7280] hover:text-[#1F2933] focus:outline-none focus:ring-2 focus:ring-[#F97316]/30"
+                  aria-label="Clear search"
+                  title="Clear"
+                >
+                  ✕
+                </button>
+              ) : null}
+            </div>
+
+            <p className="text-sm text-[#6B7280]">
+              {searchQuery ? (
+                <>
+                  Showing <span className="font-semibold text-[#1F2933]">{filteredKitchens.length}</span> of{" "}
+                  <span className="font-semibold text-[#1F2933]">{kitchens.length}</span>
+                </>
+              ) : (
+                <>
+                  Total <span className="font-semibold text-[#1F2933]">{kitchens.length}</span>
+                </>
+              )}
+            </p>
+          </div>
+        </div>
+
         {error && <p className="text-[#B91C1C] mb-4 font-medium">{error}</p>}
         {loading ? (
           <p className="text-[#6B7280]">Loading...</p>
         ) : kitchens.length === 0 ? (
           <p className="text-[#6B7280]">No verified kitchens yet.</p>
+        ) : filteredKitchens.length === 0 ? (
+          <div className="bg-white border border-black/5 shadow-xl shadow-black/10 rounded-2xl p-6">
+            <p className="text-[#1F2933] font-semibold">No kitchens match your search.</p>
+            <p className="text-[#6B7280] mt-1">Try searching by kitchen name, pincode, or a keyword.</p>
+          </div>
         ) : (
           <div className="grid md:grid-cols-2 gap-6">
-            {kitchens.map((k) => (
+            {filteredKitchens.map((k) => (
               <div
                 key={k._id}
                 className="bg-white border border-black/5 shadow-xl shadow-black/10 rounded-2xl p-6"
