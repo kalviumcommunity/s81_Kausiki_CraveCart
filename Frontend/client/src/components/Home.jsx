@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { apiFetch } from "../api";
 import { clearAuthSession, getStoredRole } from "../roleUtils";
 
 function BasketIcon({ className = "" }) {
@@ -115,60 +116,72 @@ function BowlIllustration({ className = "" }) {
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       role="img"
-      aria-label="Warm bowl illustration"
+      aria-label="Neighborhood kitchen illustration"
     >
       <defs>
-        <linearGradient id="ccSoup" x1="70" y1="30" x2="290" y2="230" gradientUnits="userSpaceOnUse">
+        <linearGradient id="ccWarm" x1="72" y1="44" x2="288" y2="232" gradientUnits="userSpaceOnUse">
           <stop stopColor="#F97316" stopOpacity="0.95" />
           <stop offset="1" stopColor="#DC2626" stopOpacity="0.85" />
         </linearGradient>
-        <linearGradient id="ccSteam" x1="180" y1="10" x2="180" y2="110" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#F97316" stopOpacity="0.55" />
-          <stop offset="1" stopColor="#F97316" stopOpacity="0" />
-        </linearGradient>
       </defs>
 
+      {/* Soft warm blob */}
       <path
-        d="M120 62c-10-16 6-28 0-42"
-        stroke="url(#ccSteam)"
-        strokeWidth="10"
-        strokeLinecap="round"
-      />
-      <path
-        d="M180 58c-10-16 6-28 0-42"
-        stroke="url(#ccSteam)"
-        strokeWidth="10"
-        strokeLinecap="round"
-      />
-      <path
-        d="M240 62c-10-16 6-28 0-42"
-        stroke="url(#ccSteam)"
-        strokeWidth="10"
-        strokeLinecap="round"
+        d="M58 178c0-48 44-86 98-86h48c54 0 98 38 98 86 0 40-30 72-70 82-38 10-82 10-122 0-40-10-70-42-70-82Z"
+        fill="url(#ccWarm)"
+        opacity="0.12"
       />
 
-      <ellipse cx="180" cy="150" rx="116" ry="48" fill="url(#ccSoup)" opacity="0.16" />
+      {/* House */}
       <path
-        d="M88 142c0 57 41 96 92 96h0c51 0 92-39 92-96"
+        d="M128 124 180 82l52 42v86c0 10-8 18-18 18h-68c-10 0-18-8-18-18v-86Z"
+        fill="#FFFFFF"
         stroke="#1F2933"
         strokeOpacity="0.18"
-        strokeWidth="18"
-        strokeLinecap="round"
+        strokeWidth="6"
+        strokeLinejoin="round"
       />
       <path
-        d="M92 140c0 54 39 90 88 90h0c49 0 88-36 88-90"
-        stroke="#FFFFFF"
-        strokeWidth="16"
+        d="M118 132 180 74l62 58"
+        stroke="#1F2933"
+        strokeOpacity="0.18"
+        strokeWidth="10"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+
+      {/* Door */}
+      <path
+        d="M166 228v-46c0-8 6-14 14-14s14 6 14 14v46"
+        fill="#FFF7ED"
+        stroke="#1F2933"
+        strokeOpacity="0.18"
+        strokeWidth="6"
         strokeLinecap="round"
       />
+      <circle cx="188" cy="204" r="3" fill="#DC2626" opacity="0.8" />
+
+      {/* Chef hat */}
       <path
-        d="M112 140c0 44 28 74 68 74h0c40 0 68-30 68-74"
-        fill="url(#ccSoup)"
-        opacity="0.9"
+        d="M206 120c0-10 8-18 18-18 4 0 8 1 11 4 2-7 9-12 17-12 10 0 18 8 18 18 0 8-5 15-13 17v11c0 7-6 13-13 13h-38c-7 0-13-6-13-13v-11c-8-2-13-9-13-17Z"
+        fill="#FFFFFF"
+        stroke="#1F2933"
+        strokeOpacity="0.18"
+        strokeWidth="6"
+        strokeLinejoin="round"
       />
-      <circle cx="150" cy="168" r="9" fill="#FFF7ED" opacity="0.7" />
-      <circle cx="196" cy="176" r="7" fill="#FFF7ED" opacity="0.6" />
-      <circle cx="214" cy="160" r="6" fill="#FFF7ED" opacity="0.55" />
+      <path
+        d="M212 154h56"
+        stroke="#F97316"
+        strokeWidth="8"
+        strokeLinecap="round"
+        opacity="0.65"
+      />
+
+      {/* Plate */}
+      <ellipse cx="140" cy="220" rx="48" ry="14" fill="#FFFFFF" />
+      <ellipse cx="140" cy="220" rx="48" ry="14" fill="#1F2933" opacity="0.08" />
+      <ellipse cx="140" cy="220" rx="32" ry="9" fill="url(#ccWarm)" opacity="0.35" />
     </svg>
   );
 }
@@ -177,8 +190,26 @@ const Home = () => {
   const navigate = useNavigate();
   const shouldReduceMotion = useReducedMotion();
 
+  const profileMenuRef = useRef(null);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [me, setMe] = useState(null);
+  const [announcements, setAnnouncements] = useState([]);
+  const [announceVisible, setAnnounceVisible] = useState(true);
+
   const isAuthed = Boolean(localStorage.getItem("token"));
   const role = getStoredRole();
+
+  const avatarLetter = (() => {
+    const source = String(me?.name || me?.email || "").trim();
+    if (source) return source.slice(0, 1).toUpperCase();
+    return "U";
+  })();
+
+  const displayName = (() => {
+    const name = String(me?.name || "").trim();
+    if (name) return name;
+    return "Profile";
+  })();
 
   const handleLoginClick = () => navigate("/login");
   const handleBrowseKitchens = () => navigate("/browse-kitchens");
@@ -188,6 +219,75 @@ const Home = () => {
     clearAuthSession();
     navigate("/login", { replace: true });
   };
+
+  const handleOrders = () => {
+    navigate(isAuthed ? "/my-orders" : "/login");
+  };
+
+  const handleOffers = () => {
+    navigate(isAuthed ? "/offers" : "/login");
+  };
+
+  useEffect(() => {
+    if (!isAuthed) {
+      setMe(null);
+      return;
+    }
+
+    let alive = true;
+
+    (async () => {
+      try {
+        const res = await apiFetch("/user/me");
+        if (!alive) return;
+        setMe(res?.user || res || null);
+      } catch {
+        if (!alive) return;
+        setMe(null);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [isAuthed]);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await apiFetch("/user/announcements");
+        if (!alive) return;
+        setAnnouncements(res.announcements || []);
+      } catch (err) {
+        // ignore failures silently
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const onMouseDown = (e) => {
+      if (!profileMenuRef.current) return;
+      if (!profileMenuRef.current.contains(e.target)) {
+        setProfileMenuOpen(false);
+      }
+    };
+
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") setProfileMenuOpen(false);
+    };
+
+    document.addEventListener("mousedown", onMouseDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onMouseDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
 
   const fadeUp = {
     initial: { opacity: 0, y: shouldReduceMotion ? 0 : 14 },
@@ -203,28 +303,40 @@ const Home = () => {
             className="group inline-flex items-center gap-2 rounded-xl px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[#F97316]/35"
             aria-label="CraveCart home"
           >
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-white shadow-md shadow-black/10 ring-1 ring-black/5">
-              <BasketIcon className="h-5 w-5 text-[#F97316] transition group-hover:scale-[1.05]" />
-            </span>
-            <span className="text-lg font-semibold tracking-tight">
-              <span className="text-[#1F2933]">Crave</span>
-              <span className="text-[#DC2626]">Cart</span>
-            </span>
+            <img
+              src="/icon.png"
+              alt="CraveCart"
+              className="h-11 w-11 rounded-2xl bg-white p-1 ring-1 ring-black/5 shadow-md shadow-black/10 object-contain"
+              loading="eager"
+            />
           </a>
 
           <nav className="hidden items-center gap-8 md:flex" aria-label="Primary navigation">
-            <button
-              onClick={handleBrowseKitchens}
-              className="text-sm font-medium text-[#1F2933]/80 transition hover:text-[#1F2933] focus:outline-none focus:ring-2 focus:ring-[#F97316]/30 rounded-lg px-2 py-1"
-            >
-              Explore Kitchens
-            </button>
             <a
-              href="#how-it-works"
+              href="#about"
               className="text-sm font-medium text-[#1F2933]/80 transition hover:text-[#1F2933] focus:outline-none focus:ring-2 focus:ring-[#F97316]/30 rounded-lg px-2 py-1"
             >
-              How It Works
+              About
             </a>
+            <button
+              type="button"
+              onClick={handleOffers}
+              className="inline-flex items-center gap-2 text-sm font-medium text-[#1F2933]/80 transition hover:text-[#1F2933] focus:outline-none focus:ring-2 focus:ring-[#F97316]/30 rounded-lg px-2 py-1"
+              aria-label="View kitchens with offers"
+            >
+              <img
+                src="/offer.png"
+                alt="Offer"
+                className="h-5 w-5 object-contain mix-blend-multiply"
+              />
+              Offers
+            </button>
+            <button
+              onClick={handleOrders}
+              className="text-sm font-medium text-[#1F2933]/80 transition hover:text-[#1F2933] focus:outline-none focus:ring-2 focus:ring-[#F97316]/30 rounded-lg px-2 py-1"
+            >
+              Orders
+            </button>
             <button
               onClick={handleRegisterKitchen}
               className="text-sm font-medium text-[#1F2933]/80 transition hover:text-[#1F2933] focus:outline-none focus:ring-2 focus:ring-[#F97316]/30 rounded-lg px-2 py-1"
@@ -236,19 +348,64 @@ const Home = () => {
           <div className="flex items-center gap-3">
             {isAuthed ? (
               <>
-                <button
-                  onClick={handleBrowseKitchens}
-                  className="hidden sm:inline-flex items-center justify-center rounded-full bg-[#F97316] px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-black/10 transition hover:bg-[#EA580C] hover:-translate-y-[1px] focus:outline-none focus:ring-2 focus:ring-[#F97316]/40"
-                >
-                  Browse
-                </button>
-                <button
-                  onClick={handleLogout}
-                  className="inline-flex items-center justify-center rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#DC2626] shadow-lg shadow-black/10 ring-1 ring-black/5 transition hover:bg-[#DC2626] hover:text-white hover:-translate-y-[1px] focus:outline-none focus:ring-2 focus:ring-[#DC2626]/30"
-                  aria-label="Log out"
-                >
-                  Logout
-                </button>
+                <div className="relative" ref={profileMenuRef}>
+                  <button
+                    type="button"
+                    onClick={() => setProfileMenuOpen((v) => !v)}
+                    className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-sm font-semibold text-[#1F2933] shadow-lg shadow-black/10 ring-1 ring-black/5 transition hover:-translate-y-[1px] hover:bg-[#FFF7ED] focus:outline-none focus:ring-2 focus:ring-[#F97316]/30"
+                    aria-haspopup="menu"
+                    aria-expanded={profileMenuOpen}
+                    aria-label="Open profile menu"
+                  >
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#F97316] to-[#DC2626] text-white">
+                      {avatarLetter}
+                    </span>
+                    <span className="hidden max-w-[10rem] truncate sm:inline">{displayName}</span>
+                    <span className="text-[#6B7280]" aria-hidden="true">▾</span>
+                  </button>
+
+                  {profileMenuOpen ? (
+                    <div
+                      role="menu"
+                      className="absolute right-0 mt-2 w-48 overflow-hidden rounded-2xl bg-white shadow-xl shadow-black/10 ring-1 ring-black/5"
+                    >
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setProfileMenuOpen(false);
+                          navigate("/profile");
+                        }}
+                        className="w-full px-4 py-3 text-left text-sm font-semibold text-[#1F2933] hover:bg-[#FFF7ED]"
+                      >
+                        Profile
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setProfileMenuOpen(false);
+                          navigate("/my-orders");
+                        }}
+                        className="w-full px-4 py-3 text-left text-sm font-semibold text-[#1F2933] hover:bg-[#FFF7ED]"
+                      >
+                        Orders
+                      </button>
+                      <div className="h-px bg-black/5" />
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setProfileMenuOpen(false);
+                          handleLogout();
+                        }}
+                        className="w-full px-4 py-3 text-left text-sm font-semibold text-[#DC2626] hover:bg-[#FFF7ED]"
+                      >
+                        Logout
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
               </>
             ) : (
               <button
@@ -263,18 +420,31 @@ const Home = () => {
 
         <div className="mx-auto max-w-6xl px-4 pb-4 md:hidden">
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <button
-              onClick={handleBrowseKitchens}
-              className="rounded-full bg-white px-3 py-1 text-[#1F2933]/80 shadow-sm shadow-black/5 ring-1 ring-black/5 transition hover:text-[#1F2933] focus:outline-none focus:ring-2 focus:ring-[#F97316]/30"
-            >
-              Explore Kitchens
-            </button>
             <a
-              href="#how-it-works"
+              href="#about"
               className="rounded-full bg-white px-3 py-1 text-[#1F2933]/80 shadow-sm shadow-black/5 ring-1 ring-black/5 transition hover:text-[#1F2933] focus:outline-none focus:ring-2 focus:ring-[#F97316]/30"
             >
-              How It Works
+              About
             </a>
+            <button
+              type="button"
+              onClick={handleOffers}
+              className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-[#1F2933]/80 shadow-sm shadow-black/5 ring-1 ring-black/5 transition hover:text-[#1F2933] focus:outline-none focus:ring-2 focus:ring-[#F97316]/30"
+              aria-label="View kitchens with offers"
+            >
+              <img
+                src="/offer.png"
+                alt="Offer"
+                className="h-5 w-5 object-contain mix-blend-multiply"
+              />
+              Offers
+            </button>
+            <button
+              onClick={handleOrders}
+              className="rounded-full bg-white px-3 py-1 text-[#1F2933]/80 shadow-sm shadow-black/5 ring-1 ring-black/5 transition hover:text-[#1F2933] focus:outline-none focus:ring-2 focus:ring-[#F97316]/30"
+            >
+              Orders
+            </button>
             <button
               onClick={handleRegisterKitchen}
               className="rounded-full bg-white px-3 py-1 text-[#1F2933]/80 shadow-sm shadow-black/5 ring-1 ring-black/5 transition hover:text-[#1F2933] focus:outline-none focus:ring-2 focus:ring-[#F97316]/30"
@@ -288,6 +458,17 @@ const Home = () => {
         </div>
       </header>
 
+      {announceVisible && announcements && announcements.length > 0 ? (
+        <div className="w-full bg-white border-b border-black/5">
+          <div className="mx-auto max-w-6xl px-4 py-2">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-red-600">{announcements[0].body}</p>
+              <button onClick={() => setAnnounceVisible(false)} className="text-sm text-red-600 font-medium">✕</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <main id="top">
         <section className="mx-auto max-w-6xl px-4 pt-10 pb-12 md:pt-16">
           <div className="grid gap-10 md:grid-cols-2 md:items-center">
@@ -296,8 +477,8 @@ const Home = () => {
               transition={{ duration: shouldReduceMotion ? 0 : 0.6, ease: "easeOut" }}
             >
               <div className="flex flex-wrap items-center gap-2">
-                <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-sm font-medium text-[#DC2626] shadow-sm shadow-black/5 ring-1 ring-black/5">
-                  <span className="inline-flex h-2 w-2 rounded-full bg-[#DC2626]" aria-hidden="true" />
+                <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-sm font-medium text-[#15803D] shadow-sm shadow-black/5 ring-1 ring-black/5">
+                  <span className="inline-flex h-2 w-2 rounded-full bg-[#15803D]" aria-hidden="true" />
                   Verified Kitchens
                 </div>
                 <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-sm font-medium text-[#F97316] shadow-sm shadow-black/5 ring-1 ring-black/5">
@@ -360,9 +541,9 @@ const Home = () => {
                   <div>
                     <p className="text-sm font-semibold text-[#DC2626]">A community-driven marketplace</p>
                     <p className="mt-3 text-xl font-semibold leading-snug text-[#1F2933]">
-                      “Feels like ordering from a neighbor who really cares.”
+                      “Home-style meals that taste truly homemade.”
                     </p>
-                    <p className="mt-4 text-sm text-[#6B7280]">— Verified customer</p>
+                    <p className="mt-4 text-sm text-[#6B7280]">— CraveCart customer</p>
                   </div>
                   <div className="hidden sm:block">
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#F97316] to-[#DC2626] text-white shadow-lg shadow-black/10">
@@ -375,16 +556,13 @@ const Home = () => {
 
                 <div className="mt-6 rounded-3xl bg-[#FFF7ED] p-4 ring-1 ring-black/5">
                   <BowlIllustration className="h-48 w-full" />
-                  <p className="mt-2 text-center text-xs text-[#6B7280]">
-                    Light, fast illustration—no heavy photography.
-                  </p>
                 </div>
               </div>
             </motion.div>
           </div>
         </section>
 
-        <section id="highlights" className="scroll-mt-24 mx-auto max-w-6xl px-4 pb-14 md:pb-18">
+        <section id="about" className="scroll-mt-24 mx-auto max-w-6xl px-4 pb-14 md:pb-18">
           <div className="flex items-end justify-between gap-6">
             <div>
               <h2 className="text-2xl font-semibold tracking-tight text-[#1F2933] sm:text-3xl">Why CraveCart?</h2>

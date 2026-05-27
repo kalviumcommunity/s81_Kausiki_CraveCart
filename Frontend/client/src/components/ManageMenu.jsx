@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { apiFetch } from "../api";
+import { apiFetch, resolveUploadUrl } from "../api";
 
 const mealTypes = [
   { key: "breakfast", label: "Breakfast" },
@@ -254,7 +254,7 @@ const ManageMenu = () => {
                 </div>
                 {currentForm.imageUrl ? (
                   <div className="mt-2 cc-muted text-sm">
-                    Attached image: <a className="cc-link underline" href={currentForm.imageUrl} target="_blank" rel="noreferrer">View</a>
+                    Attached image: <a className="cc-link underline" href={resolveUploadUrl(currentForm.imageUrl)} target="_blank" rel="noreferrer">View</a>
                   </div>
                 ) : null}
               </div>

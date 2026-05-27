@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { apiFetch } from "../api";
+import { apiFetch, resolveUploadUrl } from "../api";
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
@@ -236,7 +236,7 @@ const KitchenDetail = () => {
                   </div>
                   {meal.imageUrl ? (
                     <img
-                      src={meal.imageUrl}
+                      src={resolveUploadUrl(meal.imageUrl)}
                       alt={meal.title || activeType}
                       className="w-full h-40 object-cover rounded-lg border border-black/5"
                     />

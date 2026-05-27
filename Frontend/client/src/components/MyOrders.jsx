@@ -70,7 +70,7 @@ const MyOrders = () => {
           <h1 className="text-3xl font-bold text-[#1F2933]">My Orders</h1>
           <button
             onClick={() => navigate("/")}
-            className="cc-btn-secondary px-5 py-2"
+            className="cc-btn-primary px-5 py-2"
           >
             Home
           </button>

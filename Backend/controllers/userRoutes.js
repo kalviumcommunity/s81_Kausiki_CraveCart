@@ -8,6 +8,7 @@
     const { requireAuth } = require("../middleware/auth");
     const { KitchenModel } = require("../model/kitchenModel");
     const { sendMail } = require("../utils/mail");
+    const { AnnouncementModel } = require("../model/announcementModel");
     const { ADMIN_STATIC_EMAIL, ADMIN_STATIC_PASSWORD, isAdminEmail, normalizeEmail } = require("../utils/adminAccess");
 
 
@@ -383,6 +384,25 @@
       requireAuth,
       catchAsyncError(async (req, res) => {
         res.status(200).json({ success: true, user: req.user });
+      })
+    );
+
+
+    // Public: fetch published announcements for customers/all
+    userRouter.get(
+      "/announcements",
+      catchAsyncError(async (req, res) => {
+        const now = new Date();
+
+        const announcements = await AnnouncementModel.find({
+          status: "published",
+          $or: [{ audience: "all" }, { audience: "customers" }],
+          $or: [{ publishAt: null }, { publishAt: { $lte: now } }],
+        })
+          .sort({ priority: -1, createdAt: -1 })
+          .limit(10);
+
+        res.status(200).json({ success: true, announcements });
       })
     );
 
