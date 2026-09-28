@@ -550,7 +550,7 @@ export default function Home() {
                 onClick={handleBrowseKitchens}
                 className="text-sm font-semibold text-[#23120B] hover:text-[#75070C] transition py-1 focus:outline-none"
               >
-                Restaurants
+                Kitchens
               </button>
               <a
                 href="#categories"
@@ -713,7 +713,7 @@ export default function Home() {
             onClick={handleBrowseKitchens}
             className="whitespace-nowrap px-3 py-1 rounded-xl text-xs font-semibold bg-[#FAF6F0] border border-[#E4D5C3]"
           >
-            Restaurants
+            Kitchens
           </button>
           <a
             href="#categories"
