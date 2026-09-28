@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
-require("dotenv").config();
+const path = require("path");
+require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
 
 const RETRY_DELAY_MS = 10000;
 const LOCAL_MONGO_URI = "mongodb://127.0.0.1:27017/cravecart";

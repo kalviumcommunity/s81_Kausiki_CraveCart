@@ -431,6 +431,12 @@
       userRouter.get(
         "/google",
         (req, res, next) => {
+          if (!passport._strategies || !passport._strategies.google) {
+            return res.status(503).json({
+              success: false,
+              message: "Google OAuth is not configured on this server.",
+            });
+          }
           // Accept frontend origin from query string and send it back via OAuth 'state'
           req._frontendBase = getSafeFrontendBase(req.query.returnTo);
           passport.authenticate("google", {
