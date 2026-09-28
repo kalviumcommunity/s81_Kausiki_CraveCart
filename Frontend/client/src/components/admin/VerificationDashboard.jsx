@@ -28,7 +28,9 @@ export default function VerificationDashboard({ kitchens = [], loadKitchenDetail
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div>
                 <p className="font-semibold text-[#1F2933]">{kitchen.name}</p>
-                <p className="text-sm cc-muted">Owner: {kitchen.ownerUserId?.email || kitchen.ownerUserId?.name || "-"}</p>
+                <p className="text-sm cc-muted">
+                  Owner: {kitchen.documents?.governmentId?.nameOnId || kitchen.ownerName || (kitchen.ownerUserId?.name && kitchen.ownerUserId?.name !== "Admin" ? kitchen.ownerUserId?.name : "") || "Applicant"} ({kitchen.contactEmail || (kitchen.ownerUserId?.email !== "cravecart05@gmail.com" ? kitchen.ownerUserId?.email : "") || "-"})
+                </p>
                 <p className="text-sm cc-muted">Status: {kitchen.verificationStatus} | Verified: {kitchen.verified ? "Yes" : "No"}</p>
               </div>
               <div className="flex flex-wrap gap-2">

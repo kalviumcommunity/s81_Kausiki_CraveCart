@@ -4,7 +4,7 @@ import { apiFetch } from "../api";
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
-const Subscriptions = () => {
+export default function Subscriptions() {
   const navigate = useNavigate();
   const [plans, setPlans] = useState([]);
   const [mySubs, setMySubs] = useState([]);
@@ -46,7 +46,7 @@ const Subscriptions = () => {
         method: "POST",
         body: JSON.stringify({ planId, startDate }),
       });
-      setMessage("Subscribed successfully.");
+      setMessage("Subscription confirmed! Welcome to curated daily home meals.");
       const m = await apiFetch("/api/subscriptions/my");
       setMySubs(m.subscriptions || []);
     } catch (e) {
@@ -55,75 +55,139 @@ const Subscriptions = () => {
   };
 
   return (
-    <div className="cc-page">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-[#1F2933]">Subscription Meal Plans</h1>
+    <div className="min-h-screen bg-[#F0E6DA] text-[#23120B] px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-5xl mx-auto space-y-8">
+        
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#E4D5C3]">
+          <div>
+            <span className="micro-label text-[#4F6815]">DAILY TASTING BOXES</span>
+            <h1 className="font-serif text-3xl sm:text-4xl font-extrabold text-[#75070C] mt-1">
+              Curated Meal Subscriptions
+            </h1>
+            <p className="text-xs sm:text-sm text-[#6E5C52] mt-1">
+              Never worry about what to eat. Receive fresh home-cooked meals every single day.
+            </p>
+          </div>
+
           <button
             onClick={() => navigate("/")}
-            className="cc-btn-secondary px-5 py-2"
+            className="cc-btn-secondary text-xs uppercase tracking-wider font-bold py-2.5 px-4"
           >
-            Home
+            ← Back to Home
           </button>
         </div>
 
-        {error && <p className="text-[#B91C1C] mb-4">{error}</p>}
-        {message && <p className="text-[#15803D] mb-4">{message}</p>}
+        {error && <div className="cc-alert-error">{error}</div>}
+        {message && <div className="cc-alert-success">{message}</div>}
 
-        <div className="cc-card-pad mb-6">
-          <label className="text-[#1F2933] font-semibold">Start date</label>
-          <div className="mt-2">
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="px-3 py-2 rounded-lg border border-[#E5E7EB] bg-white text-[#1F2933] focus:outline-none focus:ring-2 focus:ring-[#F97316]/30 focus:border-[#F97316]"
-            />
+        {/* Start Date Selector */}
+        <div className="bg-[#FAF6F0] border border-[#E4D5C3] rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <span className="micro-label text-[#75070C]">SUBSCRIPTION TIMELINE</span>
+            <p className="font-serif text-base font-bold text-[#23120B] mt-0.5">
+              Select Starting Date for Your Plan:
+            </p>
           </div>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="bg-white border border-[#E4D5C3] px-3 py-2 rounded-xl text-xs font-semibold text-[#23120B] focus:border-[#75070C]"
+          />
         </div>
 
-        {loading ? (
-          <p className="cc-muted">Loading...</p>
-        ) : (
-          <div className="grid md:grid-cols-2 gap-6">
-            {plans.map((p) => (
-              <div key={p._id} className="cc-card-pad">
-                <h2 className="text-xl font-semibold text-[#F97316] capitalize">{p.planType}</h2>
-                <p className="cc-muted mt-2">Meals per day: {p.mealsPerDay}</p>
-                <p className="cc-muted mt-1">Price: {p.price}</p>
-                <button
-                  onClick={() => subscribe(p._id)}
-                  className="mt-4 cc-btn-primary px-5 py-2"
-                >
-                  Subscribe
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* Available Plans */}
+        <div>
+          <span className="micro-label text-[#4F6815]">TIERS & PRICING</span>
+          <h2 className="font-serif text-2xl font-bold text-[#75070C] mt-1 mb-6">
+            Choose Your Dining Plan
+          </h2>
 
-        <div className="mt-10">
-          <h2 className="text-2xl font-bold text-[#1F2933] mb-4">My Subscriptions</h2>
+          {loading ? (
+            <div className="py-12 text-center">
+              <p className="font-serif text-base text-[#75070C]">Loading subscription plans...</p>
+            </div>
+          ) : plans.length === 0 ? (
+            <div className="bg-[#FAF6F0] border border-[#E4D5C3] rounded-3xl p-8 text-center">
+              <p className="font-serif text-lg text-[#75070C]">No plans available at this moment.</p>
+              <p className="text-xs text-[#6E5C52] mt-1">New chef tasting plans launch weekly.</p>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {plans.map((p) => (
+                <div
+                  key={p._id}
+                  className="bg-[#FAF6F0] border border-[#E4D5C3] rounded-3xl p-6 sm:p-7 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                >
+                  <div>
+                    <span className="micro-label bg-[#FFFBEA] text-[#75070C] px-2.5 py-1 rounded-md border border-[#F5EBCE]">
+                      {p.planType.toUpperCase()}
+                    </span>
+                    <h3 className="font-serif text-2xl font-bold text-[#75070C] mt-3 capitalize">
+                      {p.planType} Plan
+                    </h3>
+                    <p className="text-xs text-[#6E5C52] mt-2">
+                      {p.mealsPerDay} fresh meal{p.mealsPerDay > 1 ? "s" : ""} delivered daily to your doorstep.
+                    </p>
+
+                    <div className="mt-6 pt-4 border-t border-[#E4D5C3]">
+                      <span className="font-serif text-3xl font-extrabold text-[#75070C]">
+                        ₹{p.price}
+                      </span>
+                      <span className="text-xs text-[#6E5C52] ml-1">/ cycle</span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => subscribe(p._id)}
+                    className="mt-6 cc-btn-primary text-xs uppercase tracking-wider font-bold py-3 w-full"
+                  >
+                    Subscribe Now →
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* My Active Subscriptions */}
+        <div className="mt-12 pt-8 border-t border-[#E4D5C3]">
+          <span className="micro-label text-[#75070C]">ACTIVE MEMBERSHIPS</span>
+          <h2 className="font-serif text-2xl font-bold text-[#75070C] mt-1 mb-6">
+            My Subscriptions
+          </h2>
+
           {mySubs.length === 0 ? (
-            <p className="cc-muted">No subscriptions yet.</p>
+            <div className="bg-[#FAF6F0] border border-[#E4D5C3] rounded-2xl p-6 text-center">
+              <p className="text-xs sm:text-sm text-[#6E5C52]">You have no active subscription plans.</p>
+            </div>
           ) : (
             <div className="grid md:grid-cols-2 gap-6">
               {mySubs.map((s) => (
-                <div key={s._id} className="cc-card-pad">
-                  <h3 className="text-xl font-semibold text-[#F97316] capitalize">{s.planId?.planType}</h3>
-                  <p className="cc-muted mt-2">Meals/day: {s.planId?.mealsPerDay}</p>
-                  <p className="cc-muted mt-1">Status: {s.status}</p>
-                  <p className="cc-muted text-sm mt-2">
-                    {new Date(s.startDate).toISOString().slice(0, 10)} → {new Date(s.endDate).toISOString().slice(0, 10)}
+                <div key={s._id} className="bg-[#FAF6F0] border border-[#E4D5C3] rounded-3xl p-6 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-serif text-xl font-bold text-[#75070C] capitalize">
+                      {s.planId?.planType} Subscription
+                    </h3>
+                    <span className="cc-badge-olive text-[10px]">
+                      {s.status.toUpperCase()}
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-[#6E5C52] mt-2">
+                    Meals per Day: <span className="font-semibold text-[#23120B]">{s.planId?.mealsPerDay}</span>
+                  </p>
+                  <p className="text-xs text-[#6E5C52] mt-1">
+                    Duration: <span className="font-semibold text-[#23120B]">{new Date(s.startDate).toISOString().slice(0, 10)}</span> to <span className="font-semibold text-[#23120B]">{new Date(s.endDate).toISOString().slice(0, 10)}</span>
                   </p>
                 </div>
               ))}
             </div>
           )}
         </div>
+
       </div>
     </div>
   );
-};
-
-export default Subscriptions;
+}

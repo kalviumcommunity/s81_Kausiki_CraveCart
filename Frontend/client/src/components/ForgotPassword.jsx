@@ -1,20 +1,8 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { API_BASE } from "../api";
 
-const theme = {
-  primary: "#F97316", // orange
-  primaryHover: "#DC2626", // chili red
-  accent: "#DC2626",
-  background: "#FFF7ED", // cream
-  card: "#FFFFFF",
-  textPrimary: "#1F2933",
-  textSecondary: "#6B7280",
-  error: "#B91C1C",
-  success: "#15803D",
-};
-
-const ForgotPassword = () => {
+export default function ForgotPassword() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
@@ -27,7 +15,7 @@ const ForgotPassword = () => {
     setMessage("");
 
     if (!email) {
-      setError("Please enter your email");
+      setError("Please enter your email.");
       return;
     }
 
@@ -49,89 +37,64 @@ const ForgotPassword = () => {
   };
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center px-6 py-10"
-      style={{ background: theme.background }}
-    >
-      <div
-        className="w-full max-w-md rounded-3xl border p-8 shadow-2xl"
-        style={{ backgroundColor: theme.card, borderColor: "#F3E8DF" }}
-      >
-        <h1 className="text-2xl font-semibold text-center" style={{ color: theme.textPrimary }}>
-          Forgot Password
-        </h1>
-        <p className="text-sm text-center mt-2" style={{ color: theme.textSecondary }}>
-          Enter your email and we will send a reset link.
-        </p>
+    <div className="min-h-screen bg-[#F0E6DA] text-[#23120B] flex flex-col justify-between px-4 py-8">
+      <div className="mx-auto w-full max-w-6xl flex items-center justify-between">
+        <Link to="/" className="flex items-center gap-2">
+          <div className="h-9 w-9 rounded-xl bg-[#75070C] text-[#FFFBEA] flex items-center justify-center font-serif text-xl font-bold">
+            C
+          </div>
+          <span className="font-serif text-2xl font-bold text-[#75070C]">CraveCart</span>
+        </Link>
+      </div>
 
-        {error && (
-          <div
-            className="mt-4 rounded-xl border px-4 py-3 text-sm"
-            style={{
-              borderColor: `${theme.error}66`,
-              backgroundColor: `${theme.error}0F`,
-              color: "#7F1D1D",
-            }}
-          >
-            {error}
-          </div>
-        )}
-        {message && (
-          <div
-            className="mt-4 rounded-xl border px-4 py-3 text-sm"
-            style={{
-              borderColor: `${theme.success}66`,
-              backgroundColor: `${theme.success}14`,
-              color: "#0F5132",
-            }}
-          >
-            {message}
-          </div>
-        )}
+      <div className="w-full max-w-md mx-auto my-8 bg-[#FAF6F0] border border-[#E4D5C3] rounded-3xl p-8 sm:p-10 shadow-sm">
+        <div className="text-center">
+          <span className="micro-label text-[#75070C]">ACCOUNT RECOVERY</span>
+          <h1 className="font-serif text-3xl font-extrabold text-[#75070C] mt-1">
+            Forgot Password
+          </h1>
+          <p className="text-xs sm:text-sm text-[#6E5C52] mt-1">
+            Enter your email to receive a password reset link.
+          </p>
+        </div>
+
+        {error && <div className="cc-alert-error mt-6">{error}</div>}
+        {message && <div className="cc-alert-success mt-6">{message}</div>}
 
         <form className="mt-6 space-y-4" onSubmit={submit}>
           <div>
-            <label className="block text-sm font-medium" style={{ color: theme.textSecondary }}>
-              Email
-            </label>
+            <label className="micro-label text-[#6E5C52] block mb-1">EMAIL ADDRESS</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="auth-input mt-2 w-full rounded-xl border px-4 py-3 text-[#1F2933] placeholder:text-[#6B7280] outline-none focus:ring-2 focus:ring-[#F97316]"
-              style={{ backgroundColor: "#FFFBF5", borderColor: "#E5E7EB" }}
-              placeholder="you@example.com"
+              placeholder="name@example.com"
               required
+              className="w-full bg-white border border-[#E4D5C3] px-3.5 py-2.5 rounded-xl text-xs sm:text-sm text-[#23120B] focus:border-[#75070C]"
             />
           </div>
+
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-xl px-6 py-3 font-semibold text-white transition hover:brightness-105 disabled:opacity-50"
-            style={{ backgroundColor: theme.primary, boxShadow: "0 10px 30px rgba(249,115,22,0.28)" }}
-            onMouseOver={(e) => (e.currentTarget.style.backgroundColor = theme.primaryHover)}
-            onMouseOut={(e) => (e.currentTarget.style.backgroundColor = theme.primary)}
+            className="w-full cc-btn-primary text-xs uppercase tracking-wider font-bold py-3"
           >
-            {loading ? "Sending..." : "Send reset link"}
+            {loading ? "Sending Link..." : "Send Reset Link →"}
           </button>
+
           <button
             type="button"
             onClick={() => navigate("/login")}
-            className="w-full rounded-xl border px-6 py-3 font-semibold transition"
-            style={{
-              borderColor: "#E5E7EB",
-              color: theme.textPrimary,
-              backgroundColor: "#FFFBF5",
-            }}
-            onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#F3F4F6")}
-            onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#FFFBF5")}
+            className="w-full cc-btn-secondary text-xs uppercase tracking-wider font-bold py-3"
           >
-            Back to login
+            ← Back to Login
           </button>
         </form>
       </div>
+
+      <div className="text-center text-xs text-[#6E5C52]">
+        © {new Date().getFullYear()} CraveCart Artisanal Food Commerce.
+      </div>
     </div>
   );
-};
-
-export default ForgotPassword;
+}
