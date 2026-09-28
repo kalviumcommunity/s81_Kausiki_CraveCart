@@ -4,20 +4,12 @@ import { apiFetch } from "../api";
 
 function matchesOffer(k) {
   if (!k) return false;
-
-  // Prefer explicit fields if they exist now or later.
-  if (k.hasOffer === true) return true;
-  if (k.offer === true) return true;
+  if (k.hasOffer === true || k.offer === true) return true;
   if (typeof k.offerText === "string" && k.offerText.trim()) return true;
   if (typeof k.offerTitle === "string" && k.offerTitle.trim()) return true;
   if (typeof k.discount === "number" && k.discount > 0) return true;
   if (typeof k.discountPercent === "number" && k.discountPercent > 0) return true;
-
-  // Heuristic fallback based on text.
-  const text = [k?.name, k?.description, k?.addressText]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
+  const text = [k?.name, k?.description, k?.addressText].filter(Boolean).join(" ").toLowerCase();
   return /(offer|discount|deal|%\s*off|\boff\b|save\b)/.test(text);
 }
 
@@ -51,83 +43,117 @@ export default function Offers() {
   }, [kitchens]);
 
   return (
-    <div className="min-h-screen bg-[#FFF7ED] text-[#1F2933] px-6 py-8">
-      <div className="max-w-5xl mx-auto">
-        <div className="flex items-center justify-between mb-6 gap-4">
-          <div className="flex items-center gap-3">
-            <img
-              src="/offer.png"
-              alt="Offers"
-              className="h-10 w-10 object-contain mix-blend-multiply"
-            />
-            <div>
-              <h1 className="text-3xl font-bold text-[#1F2933]">Offers</h1>
-              <p className="text-sm text-[#6B7280]">Kitchens currently running deals.</p>
-            </div>
+    <div className="min-h-screen bg-[#F0E6DA] text-[#23120B] px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-6xl mx-auto">
+        
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 pb-6 border-b border-[#E4D5C3]">
+          <div>
+            <span className="micro-label text-[#75070C]">PROMOTIONAL SELECTION</span>
+            <h1 className="font-serif text-3xl sm:text-4xl font-extrabold text-[#75070C] mt-1">
+              Today's Chef Offers & Tasting Perks
+            </h1>
+            <p className="text-xs sm:text-sm text-[#6E5C52] mt-1">
+              Curated introductory deals and seasonal discounts from verified home kitchens.
+            </p>
           </div>
 
           <button
             onClick={() => navigate("/")}
-            className="bg-[#F97316] hover:bg-[#EA580C] text-white font-semibold px-5 py-2 rounded-full transition shadow-lg shadow-black/10 focus:outline-none focus:ring-2 focus:ring-[#F97316]/40"
+            className="cc-btn-secondary text-xs uppercase tracking-wider font-bold py-2.5 px-5 self-start sm:self-auto"
           >
-            Home
+            ← Back to Home
           </button>
         </div>
 
-        {error ? <p className="text-[#B91C1C] mb-4 font-medium">{error}</p> : null}
+        {/* Featured Butter Promo Highlight */}
+        <div className="bg-[#FFFBEA] border border-[#E4D5C3] rounded-3xl p-6 sm:p-10 mb-10 shadow-sm relative overflow-hidden">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div>
+              <span className="micro-label bg-[#75070C] text-[#FFFBEA] px-3 py-1 rounded-full">
+                CODE: BUTTER15
+              </span>
+              <h2 className="font-serif text-2xl sm:text-3xl font-extrabold text-[#75070C] mt-3">
+                15% Off Your First Artisanal Pre-Order
+              </h2>
+              <p className="text-xs sm:text-sm text-[#23120B]/85 mt-2 max-w-lg">
+                Use promo code <span className="font-bold text-[#75070C]">BUTTER15</span> at checkout to enjoy savings across all neighborhood home chef kitchens.
+              </p>
+            </div>
+            <button
+              onClick={() => navigate("/browse-kitchens")}
+              className="cc-btn-primary text-xs uppercase tracking-wider font-bold py-3 px-6 whitespace-nowrap"
+            >
+              Browse Eligible Kitchens →
+            </button>
+          </div>
+        </div>
+
+        {error && <div className="cc-alert-error mb-6">{error}</div>}
 
         {loading ? (
-          <p className="text-[#6B7280]">Loading...</p>
+          <div className="py-20 text-center">
+            <p className="font-serif text-lg text-[#75070C]">Scanning for active kitchen offers...</p>
+          </div>
         ) : offerKitchens.length === 0 ? (
-          <div className="bg-white border border-black/5 shadow-xl shadow-black/10 rounded-2xl p-6">
-            <p className="text-[#1F2933] font-semibold">No offers available right now.</p>
-            <p className="text-[#6B7280] mt-1">Check back later for new deals.</p>
-            <div className="mt-4">
-              <button
-                onClick={() => navigate("/browse-kitchens")}
-                className="bg-white text-[#F97316] font-semibold px-5 py-2 rounded-full ring-1 ring-black/10 hover:bg-[#FFF7ED] transition"
-              >
-                Browse all kitchens
-              </button>
-            </div>
+          <div className="bg-[#FAF6F0] border border-[#E4D5C3] rounded-3xl p-12 text-center">
+            <span className="text-4xl">🏷️</span>
+            <h3 className="font-serif text-2xl font-bold text-[#75070C] mt-4">
+              All neighborhood chefs are currently cooking standard menus
+            </h3>
+            <p className="text-xs sm:text-sm text-[#6E5C52] mt-2 max-w-md mx-auto">
+              Check back daily for pop-up discounts or browse our full collection of verified home kitchens.
+            </p>
+            <button
+              onClick={() => navigate("/browse-kitchens")}
+              className="mt-6 cc-btn-primary text-xs uppercase tracking-wider font-bold py-3 px-6"
+            >
+              Browse All Kitchens
+            </button>
           </div>
         ) : (
           <div className="grid md:grid-cols-2 gap-6">
             {offerKitchens.map((k) => (
-              <div key={k._id} className="bg-white border border-black/5 shadow-xl shadow-black/10 rounded-2xl p-6">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-xl font-semibold text-[#1F2933]">{k.name}</h2>
-                      <span className="inline-flex items-center rounded-full bg-[#F59E0B] px-2.5 py-1 text-xs font-semibold text-[#1F2933]">
-                        Offer
-                      </span>
+              <div
+                key={k._id}
+                className="bg-[#FAF6F0] border border-[#E4D5C3] rounded-3xl p-6 sm:p-7 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="font-serif text-2xl font-bold text-[#75070C]">{k.name}</h2>
+                        <span className="micro-label bg-[#FFFBEA] text-[#75070C] px-2.5 py-1 rounded-full border border-[#F5EBCE]">
+                          SPECIAL OFFER
+                        </span>
+                      </div>
+                      <p className="text-xs sm:text-sm text-[#6E5C52] mt-2 leading-relaxed">
+                        {k.description || "Freshly cooked to order with special limited-time discounts."}
+                      </p>
                     </div>
-                    <p className="text-[#6B7280] mt-1">{k.description || ""}</p>
-                    <p className="text-[#6B7280] text-sm mt-2">
-                      Rating: {(k.avgRating || 0).toFixed(1)} ({k.ratingCount || 0})
-                    </p>
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t border-[#E4D5C3] flex items-center gap-4 text-xs">
+                    <span className="font-bold text-[#75070C]">
+                      ★ {(k.avgRating || 0).toFixed(1)} ({k.ratingCount || 0} reviews)
+                    </span>
+                    <span className="text-[#4F6815] font-semibold">Special Discount Active</span>
                   </div>
                 </div>
 
-                <div className="mt-4 flex gap-3">
+                <div className="mt-6 pt-4 border-t border-[#E4D5C3]/60 flex items-center gap-3">
                   <button
                     onClick={() => navigate(`/kitchens/${k._id}`)}
-                    className="bg-[#F97316] hover:bg-[#EA580C] text-white font-semibold px-5 py-2 rounded-full transition shadow-lg shadow-black/10 focus:outline-none focus:ring-2 focus:ring-[#F97316]/40"
+                    className="flex-1 cc-btn-primary text-xs uppercase tracking-wider font-bold py-2.5"
                   >
-                    View Kitchen
-                  </button>
-                  <button
-                    onClick={() => navigate(`/kitchens/${k._id}`)}
-                    className="bg-white text-[#F97316] font-semibold px-5 py-2 rounded-full ring-1 ring-black/10 hover:bg-[#FFF7ED] transition"
-                  >
-                    Order Now
+                    View Menu & Claim Deal →
                   </button>
                 </div>
               </div>
             ))}
           </div>
         )}
+
       </div>
     </div>
   );

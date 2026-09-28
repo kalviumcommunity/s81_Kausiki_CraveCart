@@ -4,7 +4,7 @@ import { apiFetch, resolveUploadUrl } from "../api";
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
-const KitchenDetail = () => {
+export default function KitchenDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -70,18 +70,32 @@ const KitchenDetail = () => {
     }
   };
 
-  const prebook = async () => {
+  const [selectedMealId, setSelectedMealId] = useState("");
+
+  const dishesForType = (type) => (meals || []).filter((x) => x.mealType === type);
+
+  const prebook = async (targetMeal = null) => {
     setError("");
     setMessage("");
     try {
+      const meal = targetMeal || (meals || []).find((m) => m._id === selectedMealId) || (meals || []).find((m) => m.mealType === mealType);
+      const chosenMealType = meal?.mealType || mealType;
+      const chosenMealId = meal?._id || undefined;
+
       const prebookRes = await apiFetch("/api/orders/prebook", {
         method: "POST",
-        body: JSON.stringify({ kitchenId: id, date, mealType, qty: Number(qty) }),
+        body: JSON.stringify({
+          kitchenId: id,
+          mealId: chosenMealId,
+          date,
+          mealType: chosenMealType,
+          qty: Number(qty),
+        }),
       });
       const createdOrder = prebookRes?.order;
       setPendingOrderId(createdOrder?._id || null);
       setPaymentMethod(null);
-      setMessage("Pre-booked successfully. Choose a payment method to confirm.");
+      setMessage(`Pre-booked "${meal?.title || chosenMealType}" successfully. Choose a payment method below to finalize.`);
       const a = await apiFetch(`/api/kitchens/${id}/availability?date=${encodeURIComponent(date)}`);
       setMeals(a.meals || []);
     } catch (e) {
@@ -116,7 +130,7 @@ const KitchenDetail = () => {
         method: "POST",
         body: JSON.stringify({ rating: Number(rating), feedback }),
       });
-      setMessage("Thanks for your feedback.");
+      setMessage("Thank you for your rating & feedback!");
       const k = await apiFetch(`/api/kitchens/${id}`);
       setKitchen(k.kitchen);
     } catch (e) {
@@ -124,238 +138,388 @@ const KitchenDetail = () => {
     }
   };
 
-  const remainingFor = (type) => {
-    const m = (meals || []).find((x) => x.mealType === type);
-    if (!m) return "Not set";
-    if (!m.isAvailable) return "Unavailable";
-    return `${m.remainingQty} left`;
-  };
-
-  const mealFor = (type) => (meals || []).find((x) => x.mealType === type);
-
   if (loading) {
     return (
-      <div className="cc-page">
-        <p className="cc-muted">Loading...</p>
+      <div className="min-h-screen bg-[#F0E6DA] flex items-center justify-center p-6 text-center">
+        <p className="font-serif text-xl text-[#75070C]">Loading artisanal kitchen details...</p>
       </div>
     );
   }
 
   if (!kitchen) {
     return (
-      <div className="cc-page">
-        <p className="cc-muted">Kitchen not found.</p>
+      <div className="min-h-screen bg-[#F0E6DA] flex flex-col items-center justify-center p-6 text-center">
+        <h2 className="font-serif text-2xl font-bold text-[#75070C]">Kitchen not found</h2>
         <button
           onClick={() => navigate("/browse-kitchens")}
-          className="mt-4 cc-btn-secondary px-5 py-2"
+          className="mt-4 cc-btn-primary text-xs uppercase tracking-wider font-bold py-2.5 px-5"
         >
-          Back
+          ← Back to Kitchens
         </button>
       </div>
     );
   }
 
   return (
-    <div className="cc-page">
-      <div className="max-w-3xl mx-auto cc-card-pad">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-[#F97316]">{kitchen.name}</h1>
-            <p className="cc-muted mt-2">{kitchen.description || ""}</p>
-            <p className="cc-muted text-sm mt-2">
-              Rating: {(kitchen.avgRating || 0).toFixed(1)} ({kitchen.ratingCount || 0})
-            </p>
-          </div>
+    <div className="min-h-screen bg-[#F0E6DA] text-[#23120B] px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-4xl mx-auto space-y-8">
+        
+        {/* Top Header Card */}
+        <div className="bg-[#FAF6F0] border border-[#E4D5C3] rounded-3xl p-6 sm:p-10 shadow-sm relative overflow-hidden">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6">
+            <div className="flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="micro-label bg-[#75070C] text-[#FFFBEA] px-3 py-1 rounded-full">
+                  CERTIFIED HOME CHEF
+                </span>
+                <span className="cc-badge-olive text-[10px]">
+                  ✓ Verified Kitchen
+                </span>
+              </div>
 
-          <div className="flex gap-2">
-            <button
-              onClick={toggleFavorite}
-              className="text-[#F97316] font-semibold"
-              title="Save as favorite"
-            >
-              {isFavorite ? "★" : "☆"}
-            </button>
-            <button
-              onClick={() => navigate("/browse-kitchens")}
-              className="cc-btn-secondary px-5 py-2"
-            >
-              Back
-            </button>
-          </div>
-        </div>
+              <h1 className="font-serif text-3xl sm:text-4xl font-extrabold text-[#75070C] mt-3">
+                {kitchen.name}
+              </h1>
 
-        {error && <p className="text-[#B91C1C] mt-4">{error}</p>}
-        {message && <p className="text-[#15803D] mt-4">{message}</p>}
+              <p className="text-xs sm:text-sm text-[#6E5C52] mt-2 leading-relaxed max-w-xl">
+                {kitchen.description || "Authentic home-cooked meals prepared fresh daily with curated organic spices and heritage techniques."}
+              </p>
 
-        <div className="mt-6">
-          <h2 className="text-xl font-semibold text-[#1F2933]">Real-time Availability</h2>
-          <div className="mt-3 flex items-center gap-3">
-            <label className="cc-muted">Date</label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="px-3 py-2 rounded-lg border border-[#E5E7EB] bg-white text-[#1F2933] focus:outline-none focus:ring-2 focus:ring-[#F97316]/30 focus:border-[#F97316]"
-            />
-          </div>
+              {kitchen.addressText && (
+                <p className="text-xs text-[#4F6815] font-semibold mt-2">
+                  📍 {kitchen.addressText} {kitchen.pincode ? `(${kitchen.pincode})` : ""}
+                </p>
+              )}
 
-          <div className="mt-4 flex flex-wrap gap-2">
-            {["breakfast", "lunch", "snacks", "dinner"].map((t) => (
+              <div className="mt-4 flex items-center gap-3 text-xs">
+                <span className="font-bold text-[#75070C] bg-[#FFFBEA] px-2.5 py-1 rounded-lg">
+                  ★ {(kitchen.avgRating || 0).toFixed(1)} / 5.0
+                </span>
+                <span className="text-[#6E5C52] font-semibold">({kitchen.ratingCount || 0} reviews)</span>
+              </div>
+            </div>
+
+            <div className="flex items-center sm:flex-col gap-2 self-start">
               <button
-                key={t}
-                onClick={() => {
-                  setActiveType(t);
-                  setMealType(t);
-                }}
-                className={`px-4 py-2 rounded-full text-sm font-semibold border ${
-                  activeType === t
-                    ? "bg-[#F97316] text-[#1F2933] border-[#F97316]/50"
-                    : "bg-white/70 text-[#1F2933] border-black/5 hover:bg-white"
-                }`}
+                onClick={toggleFavorite}
+                className="bg-white border border-[#E4D5C3] h-10 w-10 rounded-xl flex items-center justify-center text-lg hover:scale-105 transition"
+                title="Favorite"
               >
-                {t.charAt(0).toUpperCase() + t.slice(1)}
+                {isFavorite ? "❤️" : "🤍"}
               </button>
-            ))}
-          </div>
-
-          <div className="mt-4 border border-black/5 rounded-xl p-5 bg-white/70">
-            {(() => {
-              const meal = mealFor(activeType);
-              if (!meal) {
-                return <p className="cc-muted">No {activeType} menu set for this date.</p>;
-              }
-              return (
-                <div className="grid md:grid-cols-[2fr_1fr] gap-4 items-start">
-                  <div>
-                    <p className="text-[#1F2933] font-semibold capitalize">{activeType}</p>
-                    <p className="text-[#1F2933] mt-1 text-lg font-semibold">{meal.title}</p>
-                    {meal.description ? (
-                      <p className="cc-muted mt-2 leading-relaxed">{meal.description}</p>
-                    ) : null}
-                    <p className="text-[#F97316] text-sm mt-3 font-semibold">₹{meal.price} • {remainingFor(activeType)}</p>
-                  </div>
-                  {meal.imageUrl ? (
-                    <img
-                      src={resolveUploadUrl(meal.imageUrl)}
-                      alt={meal.title || activeType}
-                      className="w-full h-40 object-cover rounded-lg border border-black/5"
-                    />
-                  ) : null}
-                </div>
-              );
-            })()}
+              <button
+                onClick={() => navigate("/browse-kitchens")}
+                className="cc-btn-secondary text-xs uppercase tracking-wider font-bold py-2.5 px-4"
+              >
+                ← Back
+              </button>
+            </div>
           </div>
         </div>
 
-        <div className="mt-6">
-          <h2 className="text-xl font-semibold text-[#1F2933]">Pre-book Meal</h2>
-          <div className="mt-3 grid md:grid-cols-3 gap-3">
-            <select
-              value={mealType}
-              onChange={(e) => {
-                setMealType(e.target.value);
-                setActiveType(e.target.value);
-              }}
-              className="px-3 py-2 rounded-lg border border-[#E5E7EB] bg-white text-[#1F2933] focus:outline-none focus:ring-2 focus:ring-[#F97316]/30 focus:border-[#F97316]"
-            >
-              <option value="breakfast">Breakfast</option>
-              <option value="lunch">Lunch</option>
-              <option value="snacks">Snacks</option>
-              <option value="dinner">Dinner</option>
-            </select>
-            <input
-              type="number"
-              min={1}
-              value={qty}
-              onChange={(e) => setQty(e.target.value)}
-              className="px-3 py-2 rounded-lg border border-[#E5E7EB] bg-white text-[#1F2933] placeholder:text-[#6B7280]/80 focus:outline-none focus:ring-2 focus:ring-[#F97316]/30 focus:border-[#F97316]"
-              placeholder="Qty"
-            />
-            <button
-              onClick={prebook}
-              className="cc-btn-primary px-5 py-2"
-            >
-              Pre-book
-            </button>
+        {error && <div className="cc-alert-error">{error}</div>}
+        {message && <div className="cc-alert-success">{message}</div>}
+
+        {/* Real-time Availability & Meal Slots */}
+        <div className="bg-[#FAF6F0] border border-[#E4D5C3] rounded-3xl p-6 sm:p-8 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#E4D5C3]">
+            <div>
+              <span className="micro-label text-[#4F6815]">DAILY MENUS</span>
+              <h2 className="font-serif text-2xl font-bold text-[#75070C] mt-0.5">
+                Real-Time Menu & Availability
+              </h2>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-semibold text-[#6E5C52]">Menu Date:</label>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="bg-white border border-[#E4D5C3] px-3 py-1.5 rounded-xl text-xs font-semibold text-[#23120B] focus:border-[#75070C]"
+              />
+            </div>
           </div>
 
-          {pendingOrderId ? (
-            <div className="mt-4 border border-[#F97316]/25 bg-[#F97316]/10 rounded-xl p-4">
-              <p className="text-[#1F2933] font-semibold">Choose payment method</p>
-              <p className="cc-muted text-sm mt-1">Order ID: {pendingOrderId}</p>
-              <div className="mt-3 flex flex-wrap gap-3">
+          {/* Meal Slot Tabs */}
+          <div className="flex flex-wrap gap-2 mt-6">
+            {["breakfast", "lunch", "snacks", "dinner"].map((t) => {
+              const count = dishesForType(t).length;
+              return (
+                <button
+                  key={t}
+                  onClick={() => {
+                    setActiveType(t);
+                    setMealType(t);
+                    setSelectedMealId("");
+                  }}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition flex items-center gap-1.5 ${
+                    activeType === t
+                      ? "bg-[#75070C] text-[#FFFBEA] shadow-sm"
+                      : "bg-white border border-[#E4D5C3] text-[#23120B] hover:border-[#75070C]"
+                  }`}
+                >
+                  <span className="capitalize">{t}</span>
+                  {count > 0 && (
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                      activeType === t ? "bg-white/20 text-white" : "bg-[#75070C]/10 text-[#75070C]"
+                    }`}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Active Meal Category Dishes Grid */}
+          <div className="mt-6">
+            {dishesForType(activeType).length === 0 ? (
+              <div className="border border-[#E4D5C3] rounded-2xl p-8 bg-white text-center">
+                <p className="font-serif text-base text-[#6E5C52]">
+                  No {activeType} dishes are listed for {date} yet.
+                </p>
+                <p className="text-xs text-[#6E5C52]/70 mt-1">Check another meal slot or select a different date.</p>
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 gap-4">
+                {dishesForType(activeType).map((meal) => {
+                  const portionsLeft = Math.max(0, (meal.totalQty || 0) - (meal.soldQty || 0));
+                  const isSoldOut = !meal.isAvailable || portionsLeft === 0;
+
+                  return (
+                    <div
+                      key={meal._id}
+                      className="border border-[#E4D5C3] rounded-2xl p-5 bg-white flex flex-col justify-between hover:border-[#75070C]/40 transition shadow-xs"
+                    >
+                      <div className="grid grid-cols-[1fr_auto] gap-4">
+                        <div>
+                          <span className="micro-label text-[#4F6815]">{activeType.toUpperCase()} ITEM</span>
+                          <h3 className="font-serif text-xl font-bold text-[#23120B] mt-0.5">
+                            {meal.title}
+                          </h3>
+                          {meal.description && (
+                            <p className="text-xs text-[#6E5C52] mt-1 line-clamp-2 leading-relaxed">
+                              {meal.description}
+                            </p>
+                          )}
+                          <div className="mt-3 flex items-center gap-2 flex-wrap">
+                            <span className="font-serif text-xl font-extrabold text-[#75070C]">
+                              ₹{meal.price}
+                            </span>
+                            <span className={`micro-label px-2.5 py-0.5 rounded-lg font-bold text-[11px] ${
+                              isSoldOut ? "bg-red-50 text-red-700 border border-red-200" : "bg-[#FFFBEA] text-[#4F6815] border border-[#E4D5C3]"
+                            }`}>
+                              {isSoldOut ? "Sold Out" : `${portionsLeft} portions left`}
+                            </span>
+                          </div>
+                        </div>
+
+                        {meal.imageUrl ? (
+                          <img
+                            src={resolveUploadUrl(meal.imageUrl)}
+                            alt={meal.title}
+                            className="w-24 h-24 object-cover rounded-xl border border-[#E4D5C3]"
+                          />
+                        ) : (
+                          <div className="w-24 h-24 rounded-xl bg-[#FFFBEA] border border-[#E4D5C3] flex items-center justify-center font-serif text-[#75070C] text-xs font-bold text-center p-2">
+                            Fresh {activeType}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-4 pt-4 border-t border-[#E4D5C3]/60 flex items-center justify-between gap-3">
+                        <span className="text-[11px] text-[#6E5C52]">
+                          Daily Prep: <span className="font-semibold text-[#23120B]">{meal.totalQty}</span>
+                        </span>
+                        <button
+                          onClick={() => {
+                            setSelectedMealId(meal._id);
+                            prebook(meal);
+                          }}
+                          disabled={isSoldOut}
+                          className={`text-xs uppercase tracking-wider font-bold py-2 px-4 rounded-xl transition ${
+                            isSoldOut
+                              ? "bg-stone-200 text-stone-400 cursor-not-allowed"
+                              : "bg-[#75070C] text-[#FFFBEA] hover:bg-[#5C0509] shadow-xs"
+                          }`}
+                        >
+                          {isSoldOut ? "Sold Out" : "Pre-Book Dish →"}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Pre-book & Order Section */}
+        <div className="bg-[#FAF6F0] border border-[#E4D5C3] rounded-3xl p-6 sm:p-8 shadow-sm">
+          <span className="micro-label text-[#75070C]">CUSTOM ORDER SELECTION</span>
+          <h2 className="font-serif text-2xl font-bold text-[#75070C] mt-0.5">
+            Pre-Book Custom Portions
+          </h2>
+          <p className="text-xs text-[#6E5C52] mt-1">
+            Choose your meal slot and dish portions. Hand-crafted fresh before delivery.
+          </p>
+
+          <div className="mt-6 grid sm:grid-cols-4 gap-3">
+            <div>
+              <label className="micro-label text-[#6E5C52] block mb-1">MEAL SLOT</label>
+              <select
+                value={mealType}
+                onChange={(e) => {
+                  setMealType(e.target.value);
+                  setActiveType(e.target.value);
+                  setSelectedMealId("");
+                }}
+                className="w-full bg-white border border-[#E4D5C3] px-3 py-2.5 rounded-xl text-xs font-semibold text-[#23120B]"
+              >
+                <option value="breakfast">Breakfast</option>
+                <option value="lunch">Lunch</option>
+                <option value="snacks">Snacks</option>
+                <option value="dinner">Dinner</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="micro-label text-[#6E5C52] block mb-1">SELECT DISH</label>
+              <select
+                value={selectedMealId}
+                onChange={(e) => setSelectedMealId(e.target.value)}
+                className="w-full bg-white border border-[#E4D5C3] px-3 py-2.5 rounded-xl text-xs font-semibold text-[#23120B]"
+              >
+                <option value="">Any Available {mealType.toUpperCase()} Dish</option>
+                {dishesForType(mealType).map((m) => (
+                  <option key={m._id} value={m._id}>
+                    {m.title} (₹{m.price})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="micro-label text-[#6E5C52] block mb-1">PORTIONS (QTY)</label>
+              <input
+                type="number"
+                min={1}
+                value={qty}
+                onChange={(e) => setQty(e.target.value)}
+                className="w-full bg-white border border-[#E4D5C3] px-3 py-2.5 rounded-xl text-xs font-semibold text-[#23120B]"
+                placeholder="1"
+              />
+            </div>
+
+            <div className="flex items-end">
+              <button
+                onClick={() => prebook()}
+                className="w-full cc-btn-primary text-xs uppercase tracking-wider font-bold py-3"
+              >
+                Pre-Book Portion →
+              </button>
+            </div>
+          </div>
+
+          {/* Pending Order Payment Confirmation */}
+          {pendingOrderId && (
+            <div className="mt-6 border border-[#75070C]/30 bg-[#FFFBEA] rounded-2xl p-5">
+              <p className="font-serif text-base font-bold text-[#75070C]">
+                Select Payment Method for Order #{pendingOrderId.slice(-6)}
+              </p>
+              <p className="text-xs text-[#23120B]/80 mt-1">Choose your preferred settlement method:</p>
+              
+              <div className="mt-4 flex flex-wrap gap-3">
                 <button
                   onClick={() => setPayment("upi")}
-                  className="cc-btn-primary rounded-lg px-4 py-2"
+                  className="cc-btn-primary text-xs uppercase tracking-wider font-bold py-2.5 px-5"
                 >
                   Pay with UPI
                 </button>
                 <button
                   onClick={() => setPayment("card")}
-                  className="cc-btn-secondary rounded-lg px-4 py-2"
+                  className="cc-btn-secondary text-xs uppercase tracking-wider font-bold py-2.5 px-5"
                 >
                   Pay with Card
                 </button>
+                <button
+                  onClick={() => setPayment("cash")}
+                  className="cc-btn-olive text-xs uppercase tracking-wider font-bold py-2.5 px-5"
+                >
+                  Cash on Delivery
+                </button>
               </div>
-              {paymentMethod ? (
-                <p className="text-[#15803D] text-sm mt-2">Selected: {paymentMethod.toUpperCase()}</p>
-              ) : (
-                <p className="cc-muted text-sm mt-2">No payment selected yet.</p>
+
+              {paymentMethod && (
+                <p className="text-xs font-bold text-[#4F6815] mt-3">
+                  ✓ Confirmed Payment: {paymentMethod.toUpperCase()}
+                </p>
               )}
             </div>
-          ) : null}
+          )}
 
-          <div className="mt-4 flex gap-3">
+          <div className="mt-6 pt-6 border-t border-[#E4D5C3] flex flex-wrap gap-3">
             <button
               onClick={() => navigate("/subscriptions")}
-              className="cc-btn-primary px-5 py-2"
+              className="cc-btn-butter text-xs uppercase tracking-wider font-bold py-2.5 px-5"
             >
-              Subscription Plans
+              Explore Weekly Subscription Plans
             </button>
             <button
               onClick={() => navigate("/my-orders")}
-              className="cc-btn-secondary px-5 py-2"
+              className="cc-btn-secondary text-xs uppercase tracking-wider font-bold py-2.5 px-5"
             >
-              My Orders
+              View Order History
             </button>
           </div>
         </div>
 
-        <div className="mt-6">
-          <h2 className="text-xl font-semibold text-[#1F2933]">Rating & Feedback</h2>
-          <div className="mt-3 grid gap-3">
-            <select
-              value={rating}
-              onChange={(e) => setRating(e.target.value)}
-              className="px-3 py-2 rounded-lg border border-[#E5E7EB] bg-white text-[#1F2933] focus:outline-none focus:ring-2 focus:ring-[#F97316]/30 focus:border-[#F97316]"
-            >
-              <option value={5}>5 - Excellent</option>
-              <option value={4}>4 - Good</option>
-              <option value={3}>3 - Okay</option>
-              <option value={2}>2 - Poor</option>
-              <option value={1}>1 - Bad</option>
-            </select>
+        {/* Rating & Feedback */}
+        <div className="bg-[#FAF6F0] border border-[#E4D5C3] rounded-3xl p-6 sm:p-8 shadow-sm">
+          <span className="micro-label text-[#4F6815]">COMMUNITY TASTING REVIEWS</span>
+          <h2 className="font-serif text-2xl font-bold text-[#75070C] mt-0.5">
+            Leave Feedback for the Chef
+          </h2>
 
-            <textarea
-              value={feedback}
-              onChange={(e) => setFeedback(e.target.value)}
-              rows={3}
-              placeholder="Share feedback (optional)"
-              className="px-3 py-2 rounded-lg border border-[#E5E7EB] bg-white text-[#1F2933] placeholder:text-[#6B7280]/80 focus:outline-none focus:ring-2 focus:ring-[#F97316]/30 focus:border-[#F97316]"
-            />
+          <div className="mt-4 space-y-3">
+            <div className="grid sm:grid-cols-4 gap-3">
+              <div className="sm:col-span-1">
+                <label className="micro-label text-[#6E5C52] block mb-1">STAR RATING</label>
+                <select
+                  value={rating}
+                  onChange={(e) => setRating(e.target.value)}
+                  className="w-full bg-white border border-[#E4D5C3] px-3 py-2 rounded-xl text-xs font-semibold text-[#23120B]"
+                >
+                  <option value={5}>★★★★★ (5 - Outstanding)</option>
+                  <option value={4}>★★★★☆ (4 - Very Good)</option>
+                  <option value={3}>★★★☆☆ (3 - Good)</option>
+                  <option value={2}>★★☆☆☆ (2 - Fair)</option>
+                  <option value={1}>★☆☆☆☆ (1 - Poor)</option>
+                </select>
+              </div>
+
+              <div className="sm:col-span-3">
+                <label className="micro-label text-[#6E5C52] block mb-1">TASTING NOTES (OPTIONAL)</label>
+                <input
+                  value={feedback}
+                  onChange={(e) => setFeedback(e.target.value)}
+                  placeholder="Tell others what you loved about this dish..."
+                  className="w-full bg-white border border-[#E4D5C3] px-3 py-2 rounded-xl text-xs text-[#23120B]"
+                />
+              </div>
+            </div>
 
             <button
               onClick={submitRating}
-              className="cc-btn-primary px-5 py-2"
+              className="cc-btn-primary text-xs uppercase tracking-wider font-bold py-2.5 px-5"
             >
-              Submit
+              Submit Tasting Review
             </button>
           </div>
-          <p className="cc-muted text-sm mt-3">(Login required to submit.)</p>
         </div>
+
       </div>
     </div>
   );
-};
-
-export default KitchenDetail;
+}

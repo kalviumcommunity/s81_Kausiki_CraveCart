@@ -67,8 +67,18 @@ const formatDateTime = (value) => {
   return Number.isNaN(date.getTime()) ? "-" : date.toLocaleString();
 };
 
-const AdminDashboard = () => {
+const AdminDashboard = ({ onLock }) => {
   const navigate = useNavigate();
+
+  const handleLock = () => {
+    if (onLock) {
+      onLock();
+    } else {
+      localStorage.removeItem("token");
+      localStorage.removeItem("userRole");
+      navigate("/admin");
+    }
+  };
 
   const [activeSection, setActiveSection] = useState("overview");
   const [refreshToken, setRefreshToken] = useState(0);
@@ -87,6 +97,7 @@ const AdminDashboard = () => {
   const [subscriptions, setSubscriptions] = useState([]);
 
   const [selectedKitchen, setSelectedKitchen] = useState(null);
+  const [previewImage, setPreviewImage] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
   const [decisionLoading, setDecisionLoading] = useState(false);
@@ -384,6 +395,7 @@ const AdminDashboard = () => {
   const filteredUsers = useMemo(() => {
     const query = userQuery.trim().toLowerCase();
     return users.filter((user) => {
+      if (user.role === "admin" || user.email === "cravecart05@gmail.com" || user.email === "saikausikimaddula80@gmail.com") return false;
       if (userStatusFilter === "active" && !user.isActivated) return false;
       if (userStatusFilter === "inactive" && user.isActivated) return false;
       if (!query) return true;
@@ -443,12 +455,20 @@ const AdminDashboard = () => {
             <h1 className="text-3xl font-bold mt-1 text-[#1F2933]">Control Center</h1>
             <p className="cc-muted mt-1">Platform overview, moderation, operations, and configuration.</p>
           </div>
-          <button
-            onClick={() => navigate("/")}
-            className="cc-btn-primary px-4 py-2 rounded-xl"
-          >
-            Back to Home
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleLock}
+              className="px-4 py-2 rounded-xl border border-[#75070C]/30 text-[#75070C] bg-[#75070C]/5 text-sm font-semibold hover:bg-[#75070C]/10 transition flex items-center gap-1.5"
+            >
+              🔒 Lock Admin Console
+            </button>
+            <button
+              onClick={() => navigate("/")}
+              className="cc-btn-primary px-4 py-2 rounded-xl text-sm"
+            >
+              Back to Home
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -459,7 +479,7 @@ const AdminDashboard = () => {
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {[
-            { label: "Total users", value: summary?.users?.total ?? users.length },
+            { label: "Total users", value: summary?.users?.total ?? filteredUsers.length },
             { label: "Total kitchens", value: summary?.kitchens?.active ?? kitchens.length },
             { label: "Total orders", value: summary?.orders?.total ?? orders.length },
             { label: "Pending approvals", value: summary?.kitchens?.pending ?? pendingKitchens.length },
@@ -542,12 +562,38 @@ const AdminDashboard = () => {
 
             <div className="grid md:grid-cols-2 gap-4 text-sm text-[#1F2933]">
               <div className="space-y-1">
-                <p className="font-semibold">Owner</p>
-                <p>Name: {selectedKitchen.ownerUserId?.name || "-"}</p>
-                <p>Email: {selectedKitchen.ownerUserId?.email || "-"}</p>
-                <p>Phone: {selectedKitchen.ownerUserId?.phone || "-"}</p>
-                <p>Role: {selectedKitchen.ownerUserId?.role || "-"}</p>
-                <p>Joined: {selectedKitchen.ownerUserId?.createdAt ? formatDateTime(selectedKitchen.ownerUserId.createdAt) : "-"}</p>
+                <p className="font-semibold text-[#75070C]">Owner Details</p>
+                <p>
+                  <span className="text-[#6E5C52]">Name:</span>{" "}
+                  <strong className="text-[#1F2933]">
+                    {selectedKitchen.documents?.governmentId?.nameOnId ||
+                      selectedKitchen.ownerName ||
+                      (selectedKitchen.ownerUserId?.name && selectedKitchen.ownerUserId?.name !== "Admin"
+                        ? selectedKitchen.ownerUserId?.name
+                        : selectedKitchen.name || "-")}
+                  </strong>
+                </p>
+                <p>
+                  <span className="text-[#6E5C52]">Email:</span>{" "}
+                  <span className="font-medium">
+                    {selectedKitchen.contactEmail ||
+                      (selectedKitchen.ownerUserId?.email && selectedKitchen.ownerUserId?.email !== "cravecart05@gmail.com"
+                        ? selectedKitchen.ownerUserId?.email
+                        : selectedKitchen.contactEmail || "-")}
+                  </span>
+                </p>
+                <p>
+                  <span className="text-[#6E5C52]">Phone:</span>{" "}
+                  <span>{selectedKitchen.phone || selectedKitchen.contactPhone || selectedKitchen.ownerUserId?.phone || "-"}</span>
+                </p>
+                <p>
+                  <span className="text-[#6E5C52]">Role:</span>{" "}
+                  <span className="capitalize">{selectedKitchen.ownerUserId?.role === "admin" ? "Kitchen Owner (Admin Account)" : (selectedKitchen.ownerUserId?.role || "Kitchen Owner")}</span>
+                </p>
+                <p>
+                  <span className="text-[#6E5C52]">Joined:</span>{" "}
+                  <span>{selectedKitchen.ownerUserId?.createdAt ? formatDateTime(selectedKitchen.ownerUserId.createdAt) : "-"}</span>
+                </p>
               </div>
 
               <div className="space-y-1">
@@ -574,31 +620,98 @@ const AdminDashboard = () => {
 
             <div className="grid md:grid-cols-2 gap-4 text-sm text-[#1F2933]">
               <div>
-                <p className="font-semibold mb-1">Documents</p>
-                <ul className="list-disc list-inside space-y-1">
-                  <li>
-                    FSSAI Certificate: {selectedKitchen.documents?.fssaiCertificate?.urlPath ? (
-                      <a className="cc-link underline" href={resolveUploadUrl(selectedKitchen.documents.fssaiCertificate.urlPath)} target="_blank" rel="noreferrer">View file</a>
-                    ) : "-"}
-                  </li>
-                  <li>
-                    Government ID: {selectedKitchen.documents?.governmentId?.urlPath ? (
-                      <a className="cc-link underline" href={resolveUploadUrl(selectedKitchen.documents.governmentId.urlPath)} target="_blank" rel="noreferrer">View file</a>
-                    ) : "-"}
-                  </li>
-                  <li>Kitchen Photos: {(selectedKitchen.documents?.kitchenPhotos || []).length}</li>
-                </ul>
+                <p className="font-semibold mb-2">Compliance Documents</p>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between p-3 rounded-xl border border-black/10 bg-white">
+                    <div>
+                      <span className="font-semibold text-xs block">FSSAI Certificate</span>
+                      <span className="text-[11px] cc-muted">Food Safety & Hygiene License</span>
+                    </div>
+                    {selectedKitchen.documents?.fssaiCertificate?.urlPath ? (
+                      <a
+                        className="px-3.5 py-1.5 rounded-lg bg-[#75070C] hover:bg-[#5E0509] !text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-sm"
+                        style={{ color: "#ffffff", textDecoration: "none" }}
+                        href={resolveUploadUrl(selectedKitchen.documents.fssaiCertificate.urlPath)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <span>📄</span>
+                        <span className="!text-white font-medium" style={{ color: "#ffffff" }}>Inspect Document ↗</span>
+                      </a>
+                    ) : (
+                      <span className="text-xs text-gray-400">Not uploaded</span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 rounded-xl border border-black/10 bg-white">
+                    <div>
+                      <span className="font-semibold text-xs block">Government ID ({selectedKitchen.documents?.governmentId?.idType || "Aadhaar"})</span>
+                      <span className="text-[11px] cc-muted">Name on ID: {selectedKitchen.documents?.governmentId?.nameOnId || selectedKitchen.ownerUserId?.name || "-"}</span>
+                    </div>
+                    {selectedKitchen.documents?.governmentId?.urlPath ? (
+                      <a
+                        className="px-3.5 py-1.5 rounded-lg bg-[#75070C] hover:bg-[#5E0509] !text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-sm"
+                        style={{ color: "#ffffff", textDecoration: "none" }}
+                        href={resolveUploadUrl(selectedKitchen.documents.governmentId.urlPath)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <span>🪪</span>
+                        <span className="!text-white font-medium" style={{ color: "#ffffff" }}>Inspect ID ↗</span>
+                      </a>
+                    ) : (
+                      <span className="text-xs text-gray-400">Not uploaded</span>
+                    )}
+                  </div>
+                </div>
               </div>
+
               <div>
-                <p className="font-semibold mb-1">Flags</p>
-                <ul className="list-disc list-inside space-y-1">
-                  <li>Verification status: {selectedKitchen.verificationStatus || "-"}</li>
+                <p className="font-semibold mb-2">Verification & Service Flags</p>
+                <ul className="list-disc list-inside space-y-1 text-xs">
+                  <li>Verification status: <strong>{selectedKitchen.verificationStatus || "-"}</strong></li>
                   <li>Verification reason: {selectedKitchen.verificationRejectedReason || "-"}</li>
-                  <li>Pincode status: {selectedKitchen.pincodeVerificationStatus || "-"}</li>
-                  <li>Video call: {selectedKitchen.videoCall?.status || "-"}</li>
-                  <li>Trial order: {selectedKitchen.premiumVerification?.trialOrderStatus || "-"}</li>
+                  <li>Pincode status: <strong>{selectedKitchen.pincodeVerificationStatus || "-"}</strong> (PIN: {selectedKitchen.pincode || "Not Set"})</li>
+                  <li>Video call: {selectedKitchen.videoCall?.status || "-"} {selectedKitchen.videoCall?.preferredSlotText ? `(${selectedKitchen.videoCall.preferredSlotText})` : ""}</li>
+                  <li>Trial order: {selectedKitchen.premiumVerification?.trialOrderStatus || "-"} {selectedKitchen.premiumVerification?.notes ? `(${selectedKitchen.premiumVerification.notes})` : ""}</li>
                 </ul>
               </div>
+            </div>
+
+            {/* LIVE KITCHEN PHOTOS GALLERY */}
+            <div className="rounded-2xl border border-black/10 bg-white p-4">
+              <div className="flex items-center justify-between mb-3">
+                <p className="font-semibold text-sm text-[#1F2933]">
+                  Live Kitchen & Hygiene Photos ({selectedKitchen.documents?.kitchenPhotos?.length || 0})
+                </p>
+                <span className="text-xs cc-muted">Click any photo to view in full resolution</span>
+              </div>
+
+              {selectedKitchen.documents?.kitchenPhotos && selectedKitchen.documents.kitchenPhotos.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {selectedKitchen.documents.kitchenPhotos.map((photo, index) => {
+                    const imgUrl = resolveUploadUrl(photo.urlPath);
+                    return (
+                      <div
+                        key={index}
+                        onClick={() => setPreviewImage(imgUrl)}
+                        className="group relative rounded-xl overflow-hidden border border-black/10 aspect-video bg-gray-100 cursor-pointer shadow-xs hover:border-[#75070C] transition"
+                      >
+                        <img
+                          src={imgUrl}
+                          alt={`Kitchen Photo ${index + 1}`}
+                          className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs font-semibold gap-1">
+                          <span>🔍 Photo {index + 1}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs cc-muted py-4 text-center">No live cooking photos uploaded by this kitchen.</p>
+              )}
             </div>
 
             <div className="rounded-2xl border border-black/5 bg-white/60 p-4 text-sm text-[#1F2933]">
@@ -665,7 +778,9 @@ const AdminDashboard = () => {
                 {pendingKitchens.length === 0 ? <p className="cc-muted">No kitchens waiting for approval.</p> : pendingKitchens.map((kitchen) => (
                   <div key={kitchen._id} className="border border-black/5 rounded-xl px-4 py-3 bg-white/70">
                     <p className="font-semibold text-[#1F2933]">{kitchen.name}</p>
-                    <p className="text-sm cc-muted">Owner: {typeof kitchen.ownerUserId === "object" ? (kitchen.ownerUserId?.email || kitchen.ownerUserId?.name || kitchen.ownerUserId?._id) : kitchen.ownerUserId || "N/A"}</p>
+                    <p className="text-sm cc-muted">
+                      Owner: {kitchen.documents?.governmentId?.nameOnId || kitchen.ownerName || (kitchen.ownerUserId?.name && kitchen.ownerUserId?.name !== "Admin" ? kitchen.ownerUserId?.name : "") || "Applicant"} • {kitchen.contactEmail || (kitchen.ownerUserId?.email !== "cravecart05@gmail.com" ? kitchen.ownerUserId?.email : "") || "-"}
+                    </p>
                     <p className="text-sm cc-muted">Status: {kitchen.verificationStatus}</p>
                     <button className="mt-2 cc-btn-primary rounded-lg px-3 py-1 text-sm" onClick={() => loadKitchenDetail(kitchen._id)}>View details</button>
                   </div>
@@ -679,7 +794,7 @@ const AdminDashboard = () => {
                 <div className="rounded-xl border border-black/5 bg-white/70 p-4"><p className="cc-muted text-sm">Verified kitchens</p><p className="text-2xl font-semibold text-[#1F2933]">{summary?.kitchens?.verified ?? kitchens.filter((item) => item.verificationStatus === "verified").length}</p></div>
                 <div className="rounded-xl border border-black/5 bg-white/70 p-4"><p className="cc-muted text-sm">Rejected kitchens</p><p className="text-2xl font-semibold text-[#1F2933]">{summary?.kitchens?.rejected ?? kitchens.filter((item) => item.verificationStatus === "rejected").length}</p></div>
                 <div className="rounded-xl border border-black/5 bg-white/70 p-4"><p className="cc-muted text-sm">Open complaints</p><p className="text-2xl font-semibold text-[#1F2933]">{summary?.complaints?.open ?? complaints.filter((item) => item.status === "open").length}</p></div>
-                <div className="rounded-xl border border-black/5 bg-white/70 p-4"><p className="cc-muted text-sm">Active users</p><p className="text-2xl font-semibold text-[#1F2933]">{summary?.users?.active ?? users.filter((item) => item.isActivated).length}</p></div>
+                <div className="rounded-xl border border-black/5 bg-white/70 p-4"><p className="cc-muted text-sm">Active users</p><p className="text-2xl font-semibold text-[#1F2933]">{summary?.users?.active ?? filteredUsers.filter((item) => item.isActivated).length}</p></div>
               </div>
               <p className="cc-muted text-sm">Use the tabs below to manage each area of the platform.</p>
             </div>
@@ -720,6 +835,7 @@ const AdminDashboard = () => {
             kitchenStatusFilter={kitchenStatusFilter}
             setKitchenStatusFilter={setKitchenStatusFilter}
             loadKitchenDetail={loadKitchenDetail}
+            changeKitchenSuspension={changeKitchenSuspension}
             actionKey={actionKey}
           />
         ) : null}
@@ -965,6 +1081,35 @@ const AdminDashboard = () => {
                   </button>
                 </div>
               ))}
+            </div>
+          </div>
+        ) : null}
+        {/* PHOTO LIGHTBOX MODAL */}
+        {previewImage ? (
+          <div
+            onClick={() => setPreviewImage(null)}
+            className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 cursor-pointer"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="relative max-w-4xl w-full bg-[#FAF6F0] rounded-2xl overflow-hidden p-3 shadow-2xl"
+            >
+              <div className="flex items-center justify-between pb-2 mb-2 border-b border-black/10">
+                <span className="font-semibold text-sm text-[#1F2933]">Kitchen Photo Inspection</span>
+                <button
+                  onClick={() => setPreviewImage(null)}
+                  className="h-8 w-8 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center text-sm font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="max-h-[80vh] overflow-auto flex items-center justify-center bg-black/5 rounded-xl">
+                <img
+                  src={previewImage}
+                  alt="Enlarged Kitchen Preview"
+                  className="max-h-[75vh] w-auto object-contain rounded-lg"
+                />
+              </div>
             </div>
           </div>
         ) : null}

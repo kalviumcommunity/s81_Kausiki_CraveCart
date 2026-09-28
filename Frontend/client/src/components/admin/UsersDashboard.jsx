@@ -1,7 +1,8 @@
 import React from 'react';
 
 export default function UsersDashboard({ users = [], filteredUsers = [], userQuery, setUserQuery, userStatusFilter, setUserStatusFilter, changeUserActivation, actionKey }) {
-  const list = filteredUsers.length ? filteredUsers : users;
+  const rawList = filteredUsers.length ? filteredUsers : users;
+  const list = rawList.filter((u) => u.role !== "admin" && u.email !== "cravecart05@gmail.com" && u.email !== "saikausikimaddula80@gmail.com");
   return (
     <div className="cc-card-pad space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">

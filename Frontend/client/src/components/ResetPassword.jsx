@@ -1,9 +1,9 @@
 import React, { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import { API_BASE } from "../api";
 
-const ResetPassword = () => {
+export default function ResetPassword() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token") || "";
@@ -53,74 +53,94 @@ const ResetPassword = () => {
   };
 
   return (
-    <div className="cc-page-lg flex items-center justify-center">
-      <div className="w-full max-w-md rounded-3xl border border-black/5 bg-white/90 p-8 shadow-2xl">
-        <h1 className="text-2xl font-semibold text-[#1F2933] text-center">Reset Password</h1>
-        <p className="cc-muted text-sm text-center mt-2">Choose a new password for your account.</p>
+    <div className="min-h-screen bg-[#F0E6DA] text-[#23120B] flex flex-col justify-between px-4 py-8">
+      <div className="mx-auto w-full max-w-6xl flex items-center justify-between">
+        <Link to="/" className="flex items-center gap-2">
+          <div className="h-9 w-9 rounded-xl bg-[#75070C] text-[#FFFBEA] flex items-center justify-center font-serif text-xl font-bold">
+            C
+          </div>
+          <span className="font-serif text-2xl font-bold text-[#75070C]">CraveCart</span>
+        </Link>
+      </div>
 
-        {error && <div className="mt-4 cc-alert-error">{error}</div>}
-        {message && <div className="mt-4 cc-alert-success">{message}</div>}
+      <div className="w-full max-w-md mx-auto my-8 bg-[#FAF6F0] border border-[#E4D5C3] rounded-3xl p-8 sm:p-10 shadow-sm">
+        <div className="text-center">
+          <span className="micro-label text-[#4F6815]">CREDENTIALS UPDATE</span>
+          <h1 className="font-serif text-3xl font-extrabold text-[#75070C] mt-1">
+            Reset Password
+          </h1>
+          <p className="text-xs sm:text-sm text-[#6E5C52] mt-1">
+            Set a new secure password for your account.
+          </p>
+        </div>
+
+        {error && <div className="cc-alert-error mt-6">{error}</div>}
+        {message && <div className="cc-alert-success mt-6">{message}</div>}
 
         <form className="mt-6 space-y-4" onSubmit={submit}>
           <div>
-            <label className="block text-sm font-medium text-[#1F2933]">New password</label>
+            <label className="micro-label text-[#6E5C52] block mb-1">NEW PASSWORD</label>
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="auth-input mt-2 w-full rounded-xl border border-[#E5E7EB] bg-white px-4 py-3 pr-24 text-[#1F2933] placeholder:text-[#6B7280]/80 outline-none focus:ring-2 focus:ring-[#F97316]/30 focus:border-[#F97316]"
-                placeholder="At least 8 chars, letters & numbers"
+                placeholder="••••••••"
                 required
+                className="w-full bg-white border border-[#E4D5C3] px-3.5 py-2.5 pr-10 rounded-xl text-xs sm:text-sm text-[#23120B] focus:border-[#75070C]"
               />
               <button
                 type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                className="absolute inset-y-0 right-0 m-2 rounded-lg px-3 text-sm font-semibold text-[#6B7280] hover:bg-black/5"
-                aria-label={showPassword ? "Hide password" : "Show password"}
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6E5C52] hover:text-[#75070C]"
               >
-                {showPassword ? <FiEyeOff /> : <FiEye />}
+                {showPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
               </button>
             </div>
           </div>
+
           <div>
-            <label className="block text-sm font-medium text-[#1F2933]">Confirm password</label>
+            <label className="micro-label text-[#6E5C52] block mb-1">CONFIRM NEW PASSWORD</label>
             <div className="relative">
               <input
                 type={showConfirm ? "text" : "password"}
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
-                className="auth-input mt-2 w-full rounded-xl border border-[#E5E7EB] bg-white px-4 py-3 pr-24 text-[#1F2933] placeholder:text-[#6B7280]/80 outline-none focus:ring-2 focus:ring-[#F97316]/30 focus:border-[#F97316]"
+                placeholder="••••••••"
                 required
+                className="w-full bg-white border border-[#E4D5C3] px-3.5 py-2.5 pr-10 rounded-xl text-xs sm:text-sm text-[#23120B] focus:border-[#75070C]"
               />
               <button
                 type="button"
-                onClick={() => setShowConfirm((v) => !v)}
-                className="absolute inset-y-0 right-0 m-2 rounded-lg px-3 text-sm font-semibold text-[#6B7280] hover:bg-black/5"
-                aria-label={showConfirm ? "Hide password" : "Show password"}
+                onClick={() => setShowConfirm(!showConfirm)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6E5C52] hover:text-[#75070C]"
               >
-                {showConfirm ? <FiEyeOff /> : <FiEye />}
+                {showConfirm ? <FiEyeOff size={16} /> : <FiEye size={16} />}
               </button>
             </div>
           </div>
+
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-xl cc-btn-primary px-6 py-3 disabled:opacity-50"
+            className="w-full cc-btn-primary text-xs uppercase tracking-wider font-bold py-3"
           >
-            {loading ? "Resetting..." : "Reset password"}
+            {loading ? "Resetting..." : "Update Password →"}
           </button>
+
           <button
             type="button"
             onClick={() => navigate("/login")}
-            className="w-full rounded-xl cc-btn-secondary px-6 py-3"
+            className="w-full cc-btn-secondary text-xs uppercase tracking-wider font-bold py-3"
           >
-            Back to login
+            Back to Login
           </button>
         </form>
       </div>
+
+      <div className="text-center text-xs text-[#6E5C52]">
+        © {new Date().getFullYear()} CraveCart Artisanal Food Commerce.
+      </div>
     </div>
   );
-};
-
-export default ResetPassword;
+}
