@@ -32,7 +32,7 @@ const mealSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-mealSchema.index({ kitchenId: 1, date: 1, mealType: 1 }, { unique: true });
+mealSchema.index({ kitchenId: 1, date: 1, mealType: 1 });
 
 mealSchema.virtual("remainingQty").get(function () {
   return Math.max(0, (this.totalQty || 0) - (this.soldQty || 0));

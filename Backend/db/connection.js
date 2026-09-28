@@ -37,6 +37,22 @@ const connectToDatabase = async () => {
         serverSelectionTimeoutMS: 8000,
       });
       console.log(`MongoDB connected successfully: ${uri.includes("127.0.0.1") ? "local" : "remote"}`);
+
+      try {
+        const collections = await mongoose.connection.db.listCollections().toArray();
+        const hasMeals = collections.some((c) => c.name === "meals");
+        if (hasMeals) {
+          const indexes = await mongoose.connection.db.collection("meals").indexes();
+          const uniqueIndex = indexes.find((idx) => idx.name === "kitchenId_1_date_1_mealType_1");
+          if (uniqueIndex && uniqueIndex.unique) {
+            await mongoose.connection.db.collection("meals").dropIndex("kitchenId_1_date_1_mealType_1");
+            console.log("Successfully dropped legacy unique index 'kitchenId_1_date_1_mealType_1' on meals.");
+          }
+        }
+      } catch (idxErr) {
+        console.log("Legacy index check note:", idxErr.message);
+      }
+
       return true;
     } catch (err) {
       console.error("MongoDB connection error:", err.message || err);

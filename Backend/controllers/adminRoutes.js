@@ -31,6 +31,11 @@ adminRouter.use((req, res, next) => {
 adminRouter.get(
   "/summary",
   catchAsyncError(async (req, res) => {
+    const userFilter = {
+      role: { $ne: "admin" },
+      email: { $nin: ["cravecart05@gmail.com", "saikausikimaddula80@gmail.com"] },
+    };
+
     const [
       totalUsers,
       activeUsers,
@@ -45,9 +50,9 @@ adminRouter.get(
       totalMeals,
       totalComplaints,
     ] = await Promise.all([
-      UserModel.countDocuments(),
-      UserModel.countDocuments({ isActivated: true }),
-      UserModel.countDocuments({ isActivated: false }),
+      UserModel.countDocuments(userFilter),
+      UserModel.countDocuments({ ...userFilter, isActivated: true }),
+      UserModel.countDocuments({ ...userFilter, isActivated: false }),
       KitchenModel.countDocuments({ verificationStatus: "pending" }),
       KitchenModel.countDocuments({ verificationStatus: "verified" }),
       KitchenModel.countDocuments({ verificationStatus: "rejected" }),
@@ -83,7 +88,10 @@ adminRouter.get(
   "/users",
   catchAsyncError(async (req, res) => {
     const { status, limit = 200 } = req.query;
-    const query = {};
+    const query = {
+      role: { $ne: "admin" },
+      email: { $nin: ["cravecart05@gmail.com", "saikausikimaddula80@gmail.com"] },
+    };
     if (status === "active") query.isActivated = true;
     if (status === "suspended") query.isActivated = false;
 
@@ -104,14 +112,16 @@ adminRouter.patch(
       return next(new ErrorHandler("isActivated (boolean) is required", 400));
     }
 
-    const user = await UserModel.findByIdAndUpdate(
-      req.params.id,
-      { $set: { isActivated } },
-      { new: true }
-    ).select("-password");
+    const targetUser = await UserModel.findById(req.params.id);
+    if (!targetUser) return next(new ErrorHandler("User not found", 404));
+    if (targetUser.role === "admin" || targetUser.email === "cravecart05@gmail.com") {
+      return next(new ErrorHandler("Cannot modify platform admin status", 400));
+    }
 
-    if (!user) return next(new ErrorHandler("User not found", 404));
-    res.status(200).json({ success: true, user });
+    targetUser.isActivated = isActivated;
+    await targetUser.save();
+
+    res.status(200).json({ success: true, user: targetUser });
   })
 );
 
@@ -129,7 +139,7 @@ adminRouter.get(
     if (status === "suspended") query.isActive = false;
 
     const kitchens = await KitchenModel.find(query)
-      .populate("ownerUserId", "name email role")
+      .populate("ownerUserId", "name email phone role")
       .sort({ createdAt: -1 })
       .limit(Math.min(Number(limit) || 200, 500));
 
@@ -142,7 +152,7 @@ adminRouter.get(
   "/kitchens/pending",
   catchAsyncError(async (req, res) => {
     const kitchens = await KitchenModel.find({ verificationStatus: "pending" })
-      .populate("ownerUserId", "name email")
+      .populate("ownerUserId", "name email phone role")
       .sort({ createdAt: -1 });
     res.status(200).json({ success: true, kitchens });
   })
@@ -196,6 +206,10 @@ adminRouter.patch(
 
     const kitchen = await KitchenModel.findByIdAndUpdate(req.params.id, { $set: update }, { new: true });
     if (!kitchen) return next(new ErrorHandler("Kitchen not found", 404));
+
+    if (decision === "verified" && kitchen.ownerUserId) {
+      await UserModel.findByIdAndUpdate(kitchen.ownerUserId, { $set: { role: "kitchen" } });
+    }
 
     res.status(200).json({ success: true, kitchen });
   })

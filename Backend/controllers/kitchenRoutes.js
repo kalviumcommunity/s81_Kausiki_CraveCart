@@ -9,16 +9,16 @@ const { UserModel } = require("../model/userModel");
 
 const ErrorHandler = require("../utils/errorhadler");
 const catchAsyncError = require("../middleware/catchAsyncError");
-const { requireAuth, requireRole } = require("../middleware/auth");
+const { requireAuth, requireRole, optionalAuth } = require("../middleware/auth");
 const { parseDateOnlyUTC } = require("../utils/date");
 const { upload, buildFileDoc } = require("../middleware/multer");
 
 const kitchenRouter = express.Router();
 
-// CUSTOMER: Browse verified kitchens
+// CUSTOMER: Browse verified kitchens (public / optional auth)
 kitchenRouter.get(
   "/",
-  requireAuth,
+  optionalAuth,
   catchAsyncError(async (req, res) => {
     const verifiedOnly = req.query.verified !== "false";
 
@@ -53,10 +53,36 @@ kitchenRouter.get(
   })
 );
 
-// CUSTOMER: Kitchen details
+// CUSTOMER: Explore real dishes across verified home kitchens (public / optional auth)
+kitchenRouter.get(
+  "/explore/dishes",
+  optionalAuth,
+  catchAsyncError(async (req, res) => {
+    const { mealType, date } = req.query;
+
+    const query = { isAvailable: true };
+    if (mealType && mealType !== "all") {
+      query.mealType = mealType;
+    }
+    if (date) {
+      query.date = parseDateOnlyUTC(date);
+    }
+
+    const meals = await MealModel.find(query)
+      .populate("kitchenId", "name verified addressText pincode isActive avgRating ratingCount")
+      .sort({ createdAt: -1 })
+      .limit(50);
+
+    const activeMeals = meals.filter((m) => m.kitchenId && m.kitchenId.isActive !== false);
+
+    res.status(200).json({ success: true, dishes: activeMeals });
+  })
+);
+
+// CUSTOMER: Kitchen details (public / optional auth)
 kitchenRouter.get(
   "/:id",
-  requireAuth,
+  optionalAuth,
   catchAsyncError(async (req, res, next) => {
     const kitchen = await KitchenModel.findById(req.params.id);
     if (!kitchen) return next(new ErrorHandler("Kitchen not found", 404));
@@ -81,10 +107,10 @@ kitchenRouter.get(
   })
 );
 
-// CUSTOMER: Real-time availability for a kitchen (by date)
+// CUSTOMER: Real-time availability for a kitchen by date (public / optional auth)
 kitchenRouter.get(
   "/:id/availability",
-  requireAuth,
+  optionalAuth,
   catchAsyncError(async (req, res, next) => {
     const kitchenId = req.params.id;
     const date = parseDateOnlyUTC(req.query.date);
@@ -293,18 +319,227 @@ kitchenRouter.post(
   })
 );
 
+// KITCHEN: Unified Onboarding & Verification submission from Dashboard
+kitchenRouter.post(
+  "/my/onboard",
+  requireAuth,
+  upload.fields([
+    { name: "fssaiCertificate", maxCount: 1 },
+    { name: "governmentId", maxCount: 1 },
+    { name: "kitchenPhotos", maxCount: 5 },
+  ]),
+  catchAsyncError(async (req, res, next) => {
+    const {
+      name,
+      ownerName,
+      email,
+      ownerEmail,
+      description,
+      addressText,
+      pincode,
+      phone,
+      governmentIdType,
+      nameOnId,
+      fssaiLicenseNumber,
+      fssaiBusinessName,
+      fssaiExpiryDate,
+      videoCallSlot,
+      trialOrderNotes,
+    } = req.body;
+
+    let kitchen = await KitchenModel.findOne({ ownerUserId: req.user._id });
+
+    const kitchenName = String(name || kitchen?.name || "").trim();
+    if (!kitchenName) {
+      return next(new ErrorHandler("Kitchen name is required", 400));
+    }
+
+    const normalizedPincode = String(pincode || kitchen?.pincode || "").trim();
+    if (!normalizedPincode) {
+      return next(new ErrorHandler("Service pincode is required", 400));
+    }
+    if (!/^\d{4,10}$/.test(normalizedPincode)) {
+      return next(new ErrorHandler("Pincode must be 4-10 digits", 400));
+    }
+
+    const govIdType = String(governmentIdType || kitchen?.documents?.governmentId?.idType || "Aadhaar").trim();
+    const idName = String(nameOnId || ownerName || kitchen?.documents?.governmentId?.nameOnId || kitchen?.ownerName || (req.user.name !== "Admin" ? req.user.name : "") || kitchenName).trim();
+    if (!idName) {
+      return next(new ErrorHandler("Name of Owner on Government ID is required", 400));
+    }
+
+    const contactMail = String(ownerEmail || email || kitchen?.contactEmail || req.user.email || "").trim().toLowerCase();
+
+    const fssaiNum = String(fssaiLicenseNumber || kitchen?.fssai?.licenseNumber || "").trim();
+    if (!fssaiNum) {
+      return next(new ErrorHandler("FSSAI license number is required", 400));
+    }
+    if (!/^\d{14}$/.test(fssaiNum)) {
+      return next(new ErrorHandler("FSSAI License Number must be exactly 14 digits", 400));
+    }
+
+    const expDate = fssaiExpiryDate ? new Date(fssaiExpiryDate) : kitchen?.fssai?.expiryDate;
+    if (!expDate || Number.isNaN(new Date(expDate).getTime())) {
+      return next(new ErrorHandler("Valid FSSAI Expiry Date is required", 400));
+    }
+
+    const files = req.files || {};
+    const fssaiFile = files.fssaiCertificate?.[0];
+    const govIdFile = files.governmentId?.[0];
+    const photos = files.kitchenPhotos || [];
+
+    // If new kitchen, check mandatory files
+    if (!kitchen) {
+      if (!govIdFile) {
+        return next(new ErrorHandler("Government ID (Aadhaar / ID) document file is required", 400));
+      }
+      if (!fssaiFile) {
+        return next(new ErrorHandler("FSSAI Certificate file is required", 400));
+      }
+    } else {
+      if (!govIdFile && !kitchen.documents?.governmentId?.urlPath) {
+        return next(new ErrorHandler("Government ID document is required", 400));
+      }
+      if (!fssaiFile && !kitchen.documents?.fssaiCertificate?.urlPath) {
+        return next(new ErrorHandler("FSSAI Certificate is required", 400));
+      }
+    }
+
+    const contactPhoneNumber = String(phone || kitchen?.phone || "").trim();
+
+    if (!kitchen) {
+      kitchen = new KitchenModel({
+        ownerUserId: req.user._id,
+        name: kitchenName,
+        ownerName: idName,
+        contactEmail: contactMail,
+        description: description || "",
+        addressText: addressText || "",
+        phone: contactPhoneNumber,
+        contactPhone: contactPhoneNumber,
+        pincode: normalizedPincode,
+        verified: false,
+        verificationStatus: "pending",
+        fssai: {
+          licenseNumber: fssaiNum,
+          businessName: fssaiBusinessName || kitchenName,
+          expiryDate: new Date(expDate),
+          validationStatus: "pending",
+        },
+        documents: {
+          governmentId: {
+            ...buildFileDoc(govIdFile),
+            idType: govIdType,
+            nameOnId: idName,
+          },
+          fssaiCertificate: buildFileDoc(fssaiFile),
+          kitchenPhotos: photos.map((p) => buildFileDoc(p)),
+        },
+        videoCall: {
+          status: videoCallSlot ? "requested" : "not_requested",
+          preferredSlotText: videoCallSlot || "",
+        },
+        premiumVerification: {
+          trialOrderStatus: trialOrderNotes ? "requested" : "not_requested",
+          notes: trialOrderNotes || "",
+        },
+      });
+    } else {
+      kitchen.name = kitchenName;
+      kitchen.ownerName = idName;
+      if (contactMail) kitchen.contactEmail = contactMail;
+      if (description !== undefined) kitchen.description = String(description);
+      if (addressText !== undefined) kitchen.addressText = String(addressText);
+      if (contactPhoneNumber) {
+        kitchen.phone = contactPhoneNumber;
+        kitchen.contactPhone = contactPhoneNumber;
+      }
+      kitchen.pincode = normalizedPincode;
+      kitchen.pincodeVerificationStatus = "verified";
+
+      kitchen.fssai.licenseNumber = fssaiNum;
+      kitchen.fssai.businessName = String(fssaiBusinessName || kitchen.fssai.businessName || kitchenName);
+      kitchen.fssai.expiryDate = new Date(expDate);
+      kitchen.fssai.validationStatus = "pending";
+
+      if (govIdFile) {
+        kitchen.documents.governmentId = {
+          ...buildFileDoc(govIdFile),
+          idType: govIdType,
+          nameOnId: idName,
+        };
+      } else if (kitchen.documents?.governmentId) {
+        kitchen.documents.governmentId.idType = govIdType;
+        kitchen.documents.governmentId.nameOnId = idName;
+      }
+
+      if (fssaiFile) {
+        kitchen.documents.fssaiCertificate = buildFileDoc(fssaiFile);
+      }
+
+      if (photos.length > 0) {
+        kitchen.documents.kitchenPhotos = photos.map((p) => buildFileDoc(p));
+      }
+
+      if (videoCallSlot) {
+        kitchen.videoCall.status = "requested";
+        kitchen.videoCall.preferredSlotText = String(videoCallSlot);
+      }
+
+      if (trialOrderNotes) {
+        kitchen.premiumVerification.trialOrderStatus = "requested";
+        kitchen.premiumVerification.notes = String(trialOrderNotes);
+      }
+
+      if (kitchen.verificationStatus !== "verified") {
+        kitchen.verificationStatus = "pending";
+        kitchen.verificationRejectedReason = "";
+        kitchen.verified = false;
+      }
+    }
+
+    await kitchen.save();
+    await UserModel.findByIdAndUpdate(req.user._id, {
+      $set: {
+        role: "kitchen",
+        ...(contactPhoneNumber ? { phone: contactPhoneNumber } : {}),
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Kitchen details and verification documents submitted for admin review.",
+      kitchen,
+    });
+  })
+);
+
 // KITCHEN: Get my kitchen
 kitchenRouter.get(
   "/my/profile",
   requireAuth,
-  requireRole(["kitchen", "admin"]),
   catchAsyncError(async (req, res, next) => {
-    const kitchen = await KitchenModel.findOne({ ownerUserId: req.user._id });
-    if (!kitchen) return next(new ErrorHandler("Kitchen not found for this account", 404));
+    let kitchen = await KitchenModel.findOne({ ownerUserId: req.user._id });
+    if (!kitchen && req.user.email) {
+      kitchen = await KitchenModel.findOne({
+        $or: [
+          { contactEmail: req.user.email.toLowerCase() },
+          { contactEmail: req.user.email },
+        ],
+      });
+      if (kitchen) {
+        kitchen.ownerUserId = req.user._id;
+        await kitchen.save();
+      }
+    }
+
+    if (!kitchen) {
+      return res.status(200).json({ success: true, kitchen: null, hasMenuItems: false, isRegistered: false });
+    }
 
     const hasMenuItems = await MealModel.exists({ kitchenId: kitchen._id });
 
-    res.status(200).json({ success: true, kitchen, hasMenuItems: Boolean(hasMenuItems) });
+    res.status(200).json({ success: true, kitchen, hasMenuItems: Boolean(hasMenuItems), isRegistered: true });
   })
 );
 
@@ -348,7 +583,7 @@ kitchenRouter.post(
   requireAuth,
   requireRole(["kitchen", "admin"]),
   catchAsyncError(async (req, res, next) => {
-    const { date, mealType, title, description, imageUrl, price, totalQty, isAvailable } = req.body;
+    const { id, mealId, date, mealType, title, description, imageUrl, price, totalQty, isAvailable } = req.body;
 
     if (!date || !mealType || !title || price === undefined || totalQty === undefined) {
       return next(new ErrorHandler("date, mealType, title, price, totalQty are required", 400));
@@ -358,24 +593,59 @@ kitchenRouter.post(
 
     const kitchen = await KitchenModel.findOne({ ownerUserId: req.user._id });
     if (!kitchen) return next(new ErrorHandler("Kitchen not found for this account", 404));
-    if (!kitchen.verified) return next(new ErrorHandler("Kitchen verification pending. Menu management is locked", 403));
 
-    const meal = await MealModel.findOneAndUpdate(
-      { kitchenId: kitchen._id, date: day, mealType },
-      {
-        $set: {
-          title,
-          description: description || "",
-          imageUrl: imageUrl || "",
-          price: Number(price),
-          totalQty: Number(totalQty),
-          isAvailable: isAvailable !== undefined ? Boolean(isAvailable) : true,
+    const targetMealId = id || mealId;
+    let meal;
+
+    if (targetMealId) {
+      meal = await MealModel.findOneAndUpdate(
+        { _id: targetMealId, kitchenId: kitchen._id },
+        {
+          $set: {
+            date: day,
+            mealType,
+            title,
+            description: description || "",
+            imageUrl: imageUrl || "",
+            price: Number(price),
+            totalQty: Number(totalQty),
+            isAvailable: isAvailable !== undefined ? Boolean(isAvailable) : true,
+          },
         },
-      },
-      { upsert: true, new: true }
-    );
+        { new: true }
+      );
+      if (!meal) return next(new ErrorHandler("Dish not found to update", 404));
+    } else {
+      meal = await MealModel.create({
+        kitchenId: kitchen._id,
+        date: day,
+        mealType,
+        title,
+        description: description || "",
+        imageUrl: imageUrl || "",
+        price: Number(price),
+        totalQty: Number(totalQty),
+        isAvailable: isAvailable !== undefined ? Boolean(isAvailable) : true,
+      });
+    }
 
     res.status(200).json({ success: true, meal });
+  })
+);
+
+// KITCHEN: Delete a dish from menu
+kitchenRouter.delete(
+  "/my/meals/:id",
+  requireAuth,
+  requireRole(["kitchen", "admin"]),
+  catchAsyncError(async (req, res, next) => {
+    const kitchen = await KitchenModel.findOne({ ownerUserId: req.user._id });
+    if (!kitchen) return next(new ErrorHandler("Kitchen not found for this account", 404));
+
+    const meal = await MealModel.findOneAndDelete({ _id: req.params.id, kitchenId: kitchen._id });
+    if (!meal) return next(new ErrorHandler("Dish not found", 404));
+
+    res.status(200).json({ success: true, message: "Dish removed successfully" });
   })
 );
 
@@ -388,9 +658,8 @@ kitchenRouter.get(
 
     const kitchen = await KitchenModel.findOne({ ownerUserId: req.user._id });
     if (!kitchen) return next(new ErrorHandler("Kitchen not found for this account", 404));
-    if (!kitchen.verified) return next(new ErrorHandler("Kitchen verification pending. Menu management is locked", 403));
 
-    const meals = await MealModel.find({ kitchenId: kitchen._id, date: day }).sort({ mealType: 1, createdAt: -1 });
+    const meals = await MealModel.find({ kitchenId: kitchen._id, date: day }).sort({ createdAt: 1 });
     res.status(200).json({ success: true, date: day, meals });
   })
 );

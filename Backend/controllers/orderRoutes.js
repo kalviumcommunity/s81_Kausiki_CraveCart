@@ -15,7 +15,11 @@ orderRouter.post(
   "/prebook",
   requireAuth,
   catchAsyncError(async (req, res, next) => {
-    const { kitchenId, date, mealType, qty, paymentMethod } = req.body;
+    const { kitchenId, mealId, date, mealType, qty, paymentMethod } = req.body;
+
+    if (req.user.role === "kitchen") {
+      return next(new ErrorHandler("Kitchen owners cannot place food orders from this account. Please use a customer account.", 403));
+    }
 
     if (!kitchenId || !date || !mealType || !qty) {
       return next(new ErrorHandler("kitchenId, date, mealType, qty are required", 400));
@@ -26,9 +30,9 @@ orderRouter.post(
       return next(new ErrorHandler("mealType must be breakfast, lunch, snacks, or dinner", 400));
     }
 
-    const allowedPayment = ["upi", "card"];
+    const allowedPayment = ["upi", "card", "cash", "cod"];
     if (paymentMethod && !allowedPayment.includes(paymentMethod)) {
-      return next(new ErrorHandler("paymentMethod must be upi or card", 400));
+      return next(new ErrorHandler("paymentMethod must be upi, card, or cash", 400));
     }
 
     const qtyNum = Number(qty);
@@ -51,14 +55,23 @@ orderRouter.post(
     }
 
     // Atomically reserve quantity if available
+    const mealQuery = mealId
+      ? {
+          _id: mealId,
+          kitchenId: kitchen._id,
+          isAvailable: true,
+          $expr: { $gte: [{ $subtract: ["$totalQty", "$soldQty"] }, qtyNum] },
+        }
+      : {
+          kitchenId: kitchen._id,
+          date: day,
+          mealType,
+          isAvailable: true,
+          $expr: { $gte: [{ $subtract: ["$totalQty", "$soldQty"] }, qtyNum] },
+        };
+
     const meal = await MealModel.findOneAndUpdate(
-      {
-        kitchenId: kitchen._id,
-        date: day,
-        mealType,
-        isAvailable: true,
-        $expr: { $gte: [{ $subtract: ["$totalQty", "$soldQty"] }, qtyNum] },
-      },
+      mealQuery,
       { $inc: { soldQty: qtyNum } },
       { new: true }
     );
@@ -120,9 +133,9 @@ orderRouter.patch(
   requireAuth,
   catchAsyncError(async (req, res, next) => {
     const { paymentMethod } = req.body;
-    const allowedPayment = ["upi", "card"];
+    const allowedPayment = ["upi", "card", "cash", "cod"];
     if (!paymentMethod || !allowedPayment.includes(paymentMethod)) {
-      return next(new ErrorHandler("paymentMethod must be upi or card", 400));
+      return next(new ErrorHandler("paymentMethod must be upi, card, or cash", 400));
     }
 
     const order = await OrderModel.findOne({ _id: req.params.id, userId: req.user._id });
