@@ -9,6 +9,8 @@ const kitchenSchema = new mongoose.Schema(
       index: true,
     },
     name: { type: String, required: true, trim: true },
+    ownerName: { type: String, default: "" },
+    contactEmail: { type: String, default: "" },
     description: { type: String, default: "" },
     verified: { type: Boolean, default: false, index: true },
 
@@ -23,6 +25,8 @@ const kitchenSchema = new mongoose.Schema(
     verifiedAt: { type: Date, default: null },
 
     addressText: { type: String, default: "" },
+    phone: { type: String, default: "" },
+    contactPhone: { type: String, default: "" },
 
     pincode: { type: String, default: "", trim: true },
     pincodeVerificationStatus: {

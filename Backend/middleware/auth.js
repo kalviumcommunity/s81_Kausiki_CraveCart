@@ -53,4 +53,21 @@ const requireRole = (roles) => {
   };
 };
 
-module.exports = { requireAuth, requireRole };
+const optionalAuth = async (req, res, next) => {
+  try {
+    const token = getTokenFromReq(req);
+    if (!token || !process.env.SECRET) {
+      return next();
+    }
+    const decoded = jwt.verify(token, process.env.SECRET);
+    const user = await UserModel.findById(decoded.id).select("-password");
+    if (user) {
+      req.user = user;
+    }
+    next();
+  } catch {
+    next();
+  }
+};
+
+module.exports = { requireAuth, requireRole, optionalAuth };

@@ -18,4 +18,7 @@
         }
     });
 
-    module.exports = mongoose.model("Address", addressSchema);
+    const AddressModel = mongoose.model("Address", addressSchema);
+    module.exports = AddressModel;
+    module.exports.AddressModel = AddressModel;
+    module.exports.Address = AddressModel;

@@ -10,7 +10,7 @@ Many talented home cooks are eager to turn their skills into a livelihood but ar
 
 CraveCart solves these issues by:
 
-Providing a dedicated platform for cloud kitchens to register, list, and manage their offerings.
+Providing a dedicated platform for cloud kitchens to register, list, and manage their offerings.A
 
 Enabling customers to find nearby kitchens through location-based discovery.
 

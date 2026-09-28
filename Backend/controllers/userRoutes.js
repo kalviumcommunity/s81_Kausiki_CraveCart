@@ -9,21 +9,32 @@
     const { KitchenModel } = require("../model/kitchenModel");
     const { sendMail } = require("../utils/mail");
     const { AnnouncementModel } = require("../model/announcementModel");
-    const { ADMIN_STATIC_EMAIL, ADMIN_STATIC_PASSWORD, isAdminEmail, normalizeEmail } = require("../utils/adminAccess");
+    const { ADMIN_STATIC_EMAIL, ADMIN_STATIC_PASSWORD, isAdminEmail, normalizeEmail, verifyAdminPasskey } = require("../utils/adminAccess");
 
 
     const userRouter = express.Router();
     require("dotenv").config();
 
-    const resolveRoleForUser = async (user) => {
+    const resolveRoleForUser = async (user, requestedRole) => {
       const email = normalizeEmail(user.email);
       const ownsKitchen = Boolean(await KitchenModel.exists({ ownerUserId: user._id }));
 
       let role = "customer";
       if (isAdminEmail(email)) {
         role = "admin";
-      } else if (ownsKitchen) {
+      } else if (requestedRole === "kitchen" || ownsKitchen) {
         role = "kitchen";
+        if (!ownsKitchen) {
+          await KitchenModel.create({
+            ownerUserId: user._id,
+            name: `${user.name || "Chef"}'s Kitchen`,
+            description: "Authentic artisanal home kitchen",
+            verified: false,
+            verificationStatus: "pending",
+          });
+        }
+      } else {
+        role = "customer";
       }
 
       if (user.role !== role) {
@@ -58,7 +69,8 @@
     userRouter.post(
       "/signup",
       catchAsyncError(async (req, res, next) => {
-        const { name, email, password } = req.body;
+        const { name, email, password, role } = req.body;
+        const initialRole = role === "kitchen" ? "kitchen" : "customer";
 
         if (!email || !name || !password) {
           return next(new ErrorHandler("All fields are required", 400));
@@ -86,13 +98,24 @@
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        await UserModel.create({
+        const newUser = await UserModel.create({
           name,
           email: normalizedEmail,
           password: hashedPassword,
+          role: initialRole,
         });
 
-        res.status(201).json({ success: true, message: "Signup successful" });
+        if (initialRole === "kitchen") {
+          await KitchenModel.create({
+            ownerUserId: newUser._id,
+            name: `${name}'s Kitchen`,
+            description: "Authentic artisanal home kitchen",
+            verified: false,
+            verificationStatus: "pending",
+          });
+        }
+
+        res.status(201).json({ success: true, message: "Signup successful", role: initialRole });
       })
     );
 
@@ -177,7 +200,7 @@
     userRouter.post(
       "/login",
       catchAsyncError(async (req, res, next) => {
-        const { email, password } = req.body;
+        const { email, password, role: requestedRole } = req.body;
 
         if (!email || !password) {
           return next(new ErrorHandler("Email and password are required", 400));
@@ -187,7 +210,7 @@
         let user = await UserModel.findOne({ email: normalizedEmail });
 
         // Static admin credential shortcut
-        if (normalizedEmail === ADMIN_STATIC_EMAIL && password === ADMIN_STATIC_PASSWORD) {
+        if (isAdminEmail(normalizedEmail) && password === ADMIN_STATIC_PASSWORD) {
           if (!user) {
             const hashedPassword = await bcrypt.hash(ADMIN_STATIC_PASSWORD, 10);
             user = await UserModel.create({
@@ -244,7 +267,7 @@
           return next(new ErrorHandler("Invalid credentials", 400));
         }
 
-          const { role } = await resolveRoleForUser(user);
+          const { role } = await resolveRoleForUser(user, requestedRole);
 
           const token = jwt.sign({ id: user._id, role }, process.env.SECRET, {
             expiresIn: "30d", // 30 days
@@ -268,6 +291,63 @@
           });
         })
       );
+
+    // Admin Passkey Login (POST) - Pure passkey access for Admin
+    userRouter.post(
+      "/admin-passkey-login",
+      catchAsyncError(async (req, res, next) => {
+        const { passkey } = req.body;
+
+        if (!passkey || typeof passkey !== "string" || !passkey.trim()) {
+          return next(new ErrorHandler("Please enter the admin passkey", 400));
+        }
+
+        const isValid = await verifyAdminPasskey(passkey);
+        if (!isValid) {
+          return next(new ErrorHandler("Invalid admin passkey. Access denied.", 401));
+        }
+
+        const adminEmail = ADMIN_STATIC_EMAIL || "saikausikimaddula80@gmail.com";
+        let user = await UserModel.findOne({ email: adminEmail });
+
+        if (!user) {
+          const hashedPassword = await bcrypt.hash(passkey.trim(), 10);
+          user = await UserModel.create({
+            name: "Platform Admin",
+            email: adminEmail,
+            password: hashedPassword,
+            role: "admin",
+            isActivated: true,
+          });
+        } else {
+          if (user.role !== "admin") {
+            user.role = "admin";
+            await user.save();
+          }
+        }
+
+        const token = jwt.sign({ id: user._id, role: "admin" }, process.env.SECRET, {
+          expiresIn: "30d",
+        });
+
+        res.cookie("accesstoken", token, {
+          httpOnly: true,
+          maxAge: 30 * 24 * 60 * 60 * 1000,
+        });
+
+        return res.status(200).json({
+          success: true,
+          message: "Admin passkey verified successfully",
+          token,
+          user: {
+            id: user._id,
+            name: user.name || "Admin",
+            email: user.email,
+            role: "admin",
+          },
+        });
+      })
+    );
 
     // Helper: Send OTP Email
     async function sendOTP(email, otp) {
@@ -383,6 +463,8 @@
       "/me",
       requireAuth,
       catchAsyncError(async (req, res) => {
+        const { role } = await resolveRoleForUser(req.user);
+        req.user.role = role;
         res.status(200).json({ success: true, user: req.user });
       })
     );
