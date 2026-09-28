@@ -20,6 +20,7 @@ import ManageMenu from './components/ManageMenu';
 import Profile from './components/Profile';
 import Offers from './components/Offers';
 import SearchPage from './components/SearchPage';
+import KitchenOwnerPortal from './components/KitchenOwnerPortal';
 
 function isAuthed() {
   return Boolean(localStorage.getItem('token'));
@@ -172,6 +173,10 @@ function App() {
                   <ManageMenu />
                 </RequireRole>
               }
+            />
+            <Route
+              path="/kitchen-owner"
+              element={<KitchenOwnerPortal />}
             />
             <Route
               path="/admin-dashboard"
