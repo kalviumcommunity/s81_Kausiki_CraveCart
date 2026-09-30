@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../api";
-import { persistAuthSession } from "../roleUtils";
+import { persistAuthSession, getStoredToken, clearAuthSession } from "../roleUtils";
 
 const RegisterKitchen = () => {
   const navigate = useNavigate();
@@ -43,8 +43,7 @@ const RegisterKitchen = () => {
           // ignore 404/403; continue to registration
         }
       } catch {
-        localStorage.removeItem("token");
-        localStorage.removeItem("userRole");
+        clearAuthSession();
         setError("Session expired. Please log in again.");
         navigate("/login", { replace: true });
       }
@@ -71,7 +70,7 @@ const RegisterKitchen = () => {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getStoredToken();
       if (!token) {
         throw new Error("Please login first to register a kitchen");
       }
@@ -124,14 +123,13 @@ const RegisterKitchen = () => {
       });
 
       setMessage("Kitchen registered. Status: Pending Verification.");
-      persistAuthSession(localStorage.getItem("token") || "", "kitchen");
+      persistAuthSession(getStoredToken(), "kitchen");
       navigate("/kitchen-dashboard");
     } catch (e2) {
       const msg = e2?.message || "Failed to register kitchen";
       setError(msg);
       if (msg.toLowerCase().includes("unauthorized")) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("userRole");
+        clearAuthSession();
         navigate("/login", { replace: true });
       }
     } finally {

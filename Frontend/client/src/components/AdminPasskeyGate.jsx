@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import { FiKey, FiEye, FiEyeOff, FiArrowRight, FiShield, FiAlertCircle } from "react-icons/fi";
 import { apiFetch, API_BASE } from "../api";
-import { persistAuthSession, clearAuthSession } from "../roleUtils";
+import { persistAuthSession, clearAuthSession, getStoredToken } from "../roleUtils";
 import AdminDashboard from "./AdminDashboard";
 
 export default function AdminPasskeyGate() {
@@ -16,7 +16,7 @@ export default function AdminPasskeyGate() {
 
   // Check if existing session is already an admin
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = getStoredToken();
     if (!token) {
       setChecking(false);
       return;
@@ -25,7 +25,7 @@ export default function AdminPasskeyGate() {
     apiFetch("/user/me")
       .then((res) => {
         if (res?.user?.role === "admin") {
-          localStorage.setItem("userRole", "admin");
+          persistAuthSession(token, "admin");
           setIsUnlocked(true);
         } else {
           setIsUnlocked(false);

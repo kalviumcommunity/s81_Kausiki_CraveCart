@@ -1,17 +1,10 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { useNavigate, Link, useLocation } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 
 export default function Signup() {
   const navigate = useNavigate();
-  const location = useLocation();
-
-  // Selected Role at the start: "customer" | "kitchen"
-  const [selectedRole, setSelectedRole] = useState(() => {
-    const searchParams = new URLSearchParams(location.search);
-    return searchParams.get("role") === "kitchen" ? "kitchen" : "customer";
-  });
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -40,13 +33,13 @@ export default function Signup() {
       const response = await fetch("http://localhost:1111/user/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password, role: selectedRole }),
+        body: JSON.stringify({ name, email, password, role: "customer" }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        navigate(`/login?role=${selectedRole}`, { replace: true });
+        navigate("/login", { replace: true });
       } else {
         setError(data.message || "Signup failed");
       }
@@ -59,7 +52,6 @@ export default function Signup() {
 
   return (
     <div className="min-h-screen bg-[#F0E6DA] text-[#23120B] flex flex-col justify-between px-4 py-8 relative">
-      
       {/* Top Bar Logo */}
       <div className="mx-auto w-full max-w-6xl flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
@@ -75,86 +67,31 @@ export default function Signup() {
 
       {/* Center Auth Card */}
       <motion.div
-        className="w-full max-w-lg mx-auto my-8 bg-[#FAF6F0] border border-[#E4D5C3] rounded-3xl p-6 sm:p-10 shadow-sm"
+        className="w-full max-w-md mx-auto my-8 bg-[#FAF6F0] border border-[#E4D5C3] rounded-3xl p-6 sm:p-10 shadow-sm"
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
       >
         <div className="text-center">
-          <span className="micro-label text-[#4F6815]">JOIN THE COMMUNITY</span>
+          <span className="micro-label text-[#75070C]">JOIN THE COMMUNITY</span>
           <h1 className="font-serif text-3xl font-extrabold text-[#75070C] mt-1">
             Create Account
           </h1>
           <p className="text-xs sm:text-sm text-[#6E5C52] mt-1">
-            Select your account type to get started on CraveCart.
+            Sign up to discover and order wholesome home-cooked meals.
           </p>
-        </div>
-
-        {/* STEP 1: Two Prominent Role Selection Options */}
-        <div className="mt-6 grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={() => setSelectedRole("customer")}
-            className={`p-4 rounded-2xl border text-left transition-all duration-200 flex flex-col justify-between ${
-              selectedRole === "customer"
-                ? "border-2 border-[#75070C] bg-[#FFFBEA] shadow-xs"
-                : "border-[#E4D5C3] bg-white hover:border-[#75070C]/40"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-2xl">🍽️</span>
-              {selectedRole === "customer" && (
-                <span className="h-5 w-5 rounded-full bg-[#75070C] text-[#FFFBEA] flex items-center justify-center text-[10px] font-bold">
-                  ✓
-                </span>
-              )}
-            </div>
-            <div className="mt-3">
-              <h3 className="font-serif text-base font-bold text-[#75070C]">Customer</h3>
-              <p className="text-[11px] text-[#6E5C52] mt-0.5 leading-tight">
-                Order artisan dishes & discover kitchens
-              </p>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setSelectedRole("kitchen")}
-            className={`p-4 rounded-2xl border text-left transition-all duration-200 flex flex-col justify-between ${
-              selectedRole === "kitchen"
-                ? "border-2 border-[#4F6815] bg-[#FFFBEA] shadow-xs"
-                : "border-[#E4D5C3] bg-white hover:border-[#4F6815]/40"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-2xl">👨‍🍳</span>
-              {selectedRole === "kitchen" && (
-                <span className="h-5 w-5 rounded-full bg-[#4F6815] text-[#FFFBEA] flex items-center justify-center text-[10px] font-bold">
-                  ✓
-                </span>
-              )}
-            </div>
-            <div className="mt-3">
-              <h3 className="font-serif text-base font-bold text-[#4F6815]">Kitchen Owner</h3>
-              <p className="text-[11px] text-[#6E5C52] mt-0.5 leading-tight">
-                Sell your food, manage menu & orders
-              </p>
-            </div>
-          </button>
         </div>
 
         {error && <div className="cc-alert-error mt-6">{error}</div>}
 
         <form className="mt-6 space-y-4" onSubmit={handleSignup}>
           <div>
-            <label className="micro-label text-[#6E5C52] block mb-1">
-              {selectedRole === "kitchen" ? "CHEF / OWNER NAME" : "FULL NAME"}
-            </label>
+            <label className="micro-label text-[#6E5C52] block mb-1">FULL NAME</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder={selectedRole === "kitchen" ? "Chef Amara" : "Amara Sen"}
+              placeholder="Amara Sen"
               required
               className="w-full bg-white border border-[#E4D5C3] px-3.5 py-2.5 rounded-xl text-xs sm:text-sm text-[#23120B] focus:border-[#75070C]"
             />
@@ -217,17 +154,9 @@ export default function Signup() {
           <button
             type="submit"
             disabled={loading}
-            className={`w-full text-xs uppercase tracking-wider font-bold py-3.5 rounded-xl transition shadow-xs text-white ${
-              selectedRole === "kitchen"
-                ? "bg-[#4F6815] hover:bg-[#3E5210]"
-                : "bg-[#75070C] hover:bg-[#5E0509]"
-            }`}
+            className="w-full text-xs uppercase tracking-wider font-bold py-3.5 rounded-xl transition shadow-xs text-white bg-[#75070C] hover:bg-[#5E0509]"
           >
-            {loading
-              ? "Creating Account..."
-              : selectedRole === "kitchen"
-              ? "Register as Kitchen Owner →"
-              : "Create Customer Account →"}
+            {loading ? "Creating Account..." : "Create Account →"}
           </button>
         </form>
 
@@ -235,10 +164,10 @@ export default function Signup() {
           <p className="text-xs text-[#6E5C52]">
             Already have an account?{" "}
             <Link
-              to={`/login?role=${selectedRole}`}
+              to="/login"
               className="font-bold text-[#75070C] hover:underline"
             >
-              Sign In to {selectedRole === "kitchen" ? "Kitchen" : "Customer"} Account
+              Sign In
             </Link>
           </p>
         </div>

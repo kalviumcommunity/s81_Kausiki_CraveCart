@@ -113,13 +113,23 @@ kitchenRouter.get(
   optionalAuth,
   catchAsyncError(async (req, res, next) => {
     const kitchenId = req.params.id;
-    const date = parseDateOnlyUTC(req.query.date);
+    const date = req.query.date ? parseDateOnlyUTC(req.query.date) : null;
 
     const kitchen = await KitchenModel.findById(kitchenId);
     if (!kitchen) return next(new ErrorHandler("Kitchen not found", 404));
 
-    const meals = await MealModel.find({ kitchenId, date }).sort({ mealType: 1 });
-    res.status(200).json({ success: true, date, meals });
+    let meals = [];
+    if (date) {
+      meals = await MealModel.find({ kitchenId, date }).sort({ mealType: 1 });
+    }
+
+    // Fallback: If no dishes are specifically bound to this exact single date,
+    // return all active dishes uploaded for this kitchen so customers can browse and pre-book them
+    if (!meals || meals.length === 0) {
+      meals = await MealModel.find({ kitchenId, isAvailable: true }).sort({ createdAt: -1 });
+    }
+
+    res.status(200).json({ success: true, date: date || new Date(), meals });
   })
 );
 

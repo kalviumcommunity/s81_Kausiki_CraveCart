@@ -1,3 +1,5 @@
+import { getStoredToken } from "./roleUtils";
+
 const API_BASE = "http://localhost:1111";
 
 export function resolveUploadUrl(urlPath) {
@@ -10,7 +12,7 @@ export function resolveUploadUrl(urlPath) {
 }
 
 export async function apiFetch(path, options = {}) {
-  const token = localStorage.getItem("token");
+  const token = getStoredToken();
 
   const headers = {
     ...(options.headers || {}),
