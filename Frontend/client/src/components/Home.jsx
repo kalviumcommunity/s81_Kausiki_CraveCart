@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { apiFetch, resolveUploadUrl } from "../api";
-import { clearAuthSession, getStoredRole } from "../roleUtils";
+import { clearAuthSession, getStoredRole, getStoredToken } from "../roleUtils";
 
 // Categories data with editorial styling
 const CATEGORIES_DATA = [
@@ -191,15 +191,8 @@ export default function Home() {
   const [appliedPromo, setAppliedPromo] = useState(null);
   const [orderSuccessMsg, setOrderSuccessMsg] = useState("");
 
-  const isAuthed = Boolean(localStorage.getItem("token"));
+  const isAuthed = Boolean(getStoredToken());
   const role = getStoredRole();
-
-  // If user is a kitchen owner, redirect immediately to their Kitchen Owner Portal
-  useEffect(() => {
-    if (isAuthed && role === "kitchen") {
-      navigate("/kitchen-dashboard", { replace: true });
-    }
-  }, [isAuthed, role, navigate]);
 
   // Load User & Announcements
   useEffect(() => {
@@ -584,6 +577,19 @@ export default function Home() {
                 <span className="text-[#6E5C52]">· 25m</span>
               </div>
 
+              {/* If Kitchen Owner, show quick switch button back to Kitchen Dashboard */}
+              {role === "kitchen" && (
+                <button
+                  type="button"
+                  onClick={() => navigate("/kitchen-dashboard")}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#4F6815] text-[#FFFBEA] text-xs font-bold hover:bg-[#3D5210] transition shadow-xs cursor-pointer shrink-0"
+                  title="Return to your Kitchen Owner Dashboard"
+                >
+                  <span>👩‍🍳</span>
+                  <span>Kitchen Portal</span>
+                </button>
+              )}
+
               {/* Auth / Profile */}
               {isAuthed ? (
                 <div className="relative" ref={profileMenuRef}>
@@ -709,6 +715,15 @@ export default function Home() {
 
         {/* Mobile secondary quick tabs */}
         <div className="lg:hidden border-t border-[#E4D5C3] px-4 py-2 overflow-x-auto flex items-center gap-2">
+          {role === "kitchen" && (
+            <button
+              onClick={() => navigate("/kitchen-dashboard")}
+              className="whitespace-nowrap px-3 py-1 rounded-xl text-xs font-bold bg-[#4F6815] text-[#FFFBEA] flex items-center gap-1 shrink-0 shadow-2xs"
+            >
+              <span>👩‍🍳</span>
+              <span>Kitchen Portal</span>
+            </button>
+          )}
           <button
             onClick={handleBrowseKitchens}
             className="whitespace-nowrap px-3 py-1 rounded-xl text-xs font-semibold bg-[#FAF6F0] border border-[#E4D5C3]"

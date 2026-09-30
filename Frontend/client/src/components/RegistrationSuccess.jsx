@@ -1,11 +1,12 @@
 import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { getStoredToken } from "../roleUtils";
 
 const RegistrationSuccess = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = getStoredToken();
     if (!token) {
       navigate("/login", { replace: true });
     }

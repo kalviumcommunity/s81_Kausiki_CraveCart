@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch, resolveUploadUrl } from "../api";
+import { clearAuthSession } from "../roleUtils";
 import VerificationDashboard from "./admin/VerificationDashboard";
 import UsersDashboard from "./admin/UsersDashboard";
 import KitchensDashboard from "./admin/KitchensDashboard";
@@ -74,8 +75,7 @@ const AdminDashboard = ({ onLock }) => {
     if (onLock) {
       onLock();
     } else {
-      localStorage.removeItem("token");
-      localStorage.removeItem("userRole");
+      clearAuthSession();
       navigate("/admin");
     }
   };
@@ -724,43 +724,113 @@ const AdminDashboard = ({ onLock }) => {
               </div>
             </div>
 
-            {selectedKitchen.verificationStatus === "pending" ? (
-              <div className="rounded-2xl border border-black/5 bg-white/60 p-4">
-                <p className="text-sm font-semibold text-[#1F2933] mb-3">Review actions</p>
-                <div className="grid gap-3 lg:grid-cols-[auto_1fr_auto] lg:items-end">
+            {/* DECISION & VERIFICATION CONTROLS (EDITABLE AT ANY TIME) */}
+            <div className="rounded-2xl border border-black/10 bg-white/80 p-5 shadow-xs">
+              <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                <div>
+                  <h4 className="font-semibold text-base text-[#1F2933] flex items-center gap-2">
+                    <span>⚖️</span>
+                    <span>Verification Decision & Status Management</span>
+                  </h4>
+                  <p className="text-xs cc-muted mt-0.5">
+                    You can approve, reject, or reverse any previous decision at any time if a mistake was made.
+                  </p>
+                </div>
+                <span
+                  className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ${
+                    selectedKitchen.verificationStatus === "verified"
+                      ? "bg-[#15803D]/15 text-[#15803D] border border-[#15803D]/30"
+                      : selectedKitchen.verificationStatus === "rejected"
+                      ? "bg-[#B91C1C]/15 text-[#B91C1C] border border-[#B91C1C]/30"
+                      : "bg-[#F97316]/15 text-[#F97316] border border-[#F97316]/30"
+                  }`}
+                >
+                  Current Status:{" "}
+                  {selectedKitchen.verificationStatus === "verified"
+                    ? "✓ Approved / Verified"
+                    : selectedKitchen.verificationStatus === "rejected"
+                    ? "✗ Rejected"
+                    : "⏳ Pending Review"}
+                </span>
+              </div>
+
+              {selectedKitchen.verificationStatus === "rejected" && (
+                <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+                  <p className="font-semibold mb-1">⚠️ This kitchen is currently marked as Rejected.</p>
+                  <p>
+                    Rejection note on file:{" "}
+                    <strong>"{selectedKitchen.verificationRejectedReason || "No reason given"}"</strong>
+                  </p>
+                  <p className="mt-1 text-amber-800">
+                    If this kitchen was rejected by mistake, click <strong>"Approve & Mark as Verified"</strong> below to immediately correct the decision and enable the kitchen.
+                  </p>
+                </div>
+              )}
+
+              {selectedKitchen.verificationStatus === "verified" && (
+                <div className="mb-4 rounded-xl border border-emerald-300 bg-emerald-50 p-3 text-xs text-emerald-900">
+                  <p className="font-semibold">✓ This kitchen is currently Approved & Verified on the marketplace.</p>
+                  <p className="text-emerald-800 mt-0.5">
+                    If you need to revoke approval, update the reason below and click "Reject / Revoke Verification".
+                  </p>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#6E5C52] mb-1">
+                    Rejection / Decision Notes (Required when rejecting)
+                  </label>
+                  <textarea
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    placeholder="e.g. FSSAI document is expired, please re-upload valid license or contact admin."
+                    rows={2}
+                    className="w-full rounded-xl border border-black/15 bg-white px-3.5 py-2 text-sm text-[#1F2933] focus:outline-none focus:ring-2 focus:ring-[#75070C]/30 focus:border-[#75070C]"
+                  />
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 pt-1">
+                  {/* APPROVE BUTTON */}
                   <button
-                    disabled={decisionLoading}
+                    disabled={decisionLoading || selectedKitchen.verificationStatus === "verified"}
                     onClick={() => saveKitchenDecision("verified")}
-                    className="cc-btn-primary rounded-lg px-4 py-2 disabled:opacity-60"
+                    className="cc-btn-primary rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-xs"
                   >
-                    {decisionLoading ? "Saving..." : "Mark as Verified"}
+                    {decisionLoading
+                      ? "Saving..."
+                      : selectedKitchen.verificationStatus === "rejected"
+                      ? "✓ Reverse Decision & Approve Kitchen"
+                      : "✓ Approve & Mark as Verified"}
                   </button>
-                  <div>
-                    <label className="block text-sm font-semibold text-[#1F2933] mb-1">Rejection reason</label>
-                    <textarea
-                      value={rejectionReason}
-                      onChange={(e) => setRejectionReason(e.target.value)}
-                      placeholder="Enter reason before rejecting"
-                      rows={2}
-                      className="w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm text-[#1F2933] focus:outline-none focus:ring-2 focus:ring-[#F97316]/30 focus:border-[#F97316]"
-                    />
-                  </div>
+
+                  {/* REJECT BUTTON */}
                   <button
                     disabled={decisionLoading}
                     onClick={() => saveKitchenDecision("rejected")}
-                    className="cc-btn-danger rounded-lg px-4 py-2 disabled:opacity-60"
+                    className="cc-btn-danger rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-xs"
                   >
-                    {decisionLoading ? "Saving..." : "Reject"}
+                    {decisionLoading
+                      ? "Saving..."
+                      : selectedKitchen.verificationStatus === "rejected"
+                      ? "Update Rejection Reason"
+                      : "✗ Reject Kitchen Application"}
                   </button>
+
+                  {/* RESET TO PENDING BUTTON */}
+                  {selectedKitchen.verificationStatus !== "pending" && (
+                    <button
+                      disabled={decisionLoading}
+                      onClick={() => saveKitchenDecision("pending")}
+                      className="rounded-xl px-4 py-2 text-sm font-semibold border border-black/20 bg-white text-[#23120B] hover:bg-gray-50 transition disabled:opacity-50"
+                      title="Clear decision and send kitchen back to pending queue"
+                    >
+                      ⏳ Reset to Pending Review
+                    </button>
+                  )}
                 </div>
               </div>
-            ) : (
-              <div className={`rounded-2xl border px-4 py-3 text-sm font-medium ${selectedKitchen.verificationStatus === "verified" ? "border-[#15803D]/20 bg-[#15803D]/5 text-[#15803D]" : "border-[#B91C1C]/20 bg-[#B91C1C]/5 text-[#B91C1C]"}`}>
-                {selectedKitchen.verificationStatus === "verified"
-                  ? "This kitchen has already been verified."
-                  : "This kitchen has already been rejected. Review the reason above before changing it again."}
-              </div>
-            )}
+            </div>
           </div>
         ) : null}
 
@@ -776,13 +846,22 @@ const AdminDashboard = ({ onLock }) => {
               </div>
               <div className="space-y-3 max-h-[420px] overflow-auto pr-1">
                 {pendingKitchens.length === 0 ? <p className="cc-muted">No kitchens waiting for approval.</p> : pendingKitchens.map((kitchen) => (
-                  <div key={kitchen._id} className="border border-black/5 rounded-xl px-4 py-3 bg-white/70">
-                    <p className="font-semibold text-[#1F2933]">{kitchen.name}</p>
-                    <p className="text-sm cc-muted">
-                      Owner: {kitchen.documents?.governmentId?.nameOnId || kitchen.ownerName || (kitchen.ownerUserId?.name && kitchen.ownerUserId?.name !== "Admin" ? kitchen.ownerUserId?.name : "") || "Applicant"} • {kitchen.contactEmail || (kitchen.ownerUserId?.email !== "cravecart05@gmail.com" ? kitchen.ownerUserId?.email : "") || "-"}
-                    </p>
-                    <p className="text-sm cc-muted">Status: {kitchen.verificationStatus}</p>
-                    <button className="mt-2 cc-btn-primary rounded-lg px-3 py-1 text-sm" onClick={() => loadKitchenDetail(kitchen._id)}>View details</button>
+                  <div key={kitchen._id} className="border border-black/5 rounded-xl px-4 py-3 bg-white/70 flex items-center justify-between gap-3 flex-wrap">
+                    <div>
+                      <p className="font-semibold text-[#1F2933]">{kitchen.name}</p>
+                      <p className="text-sm cc-muted">
+                        Owner: {kitchen.documents?.governmentId?.nameOnId || kitchen.ownerName || (kitchen.ownerUserId?.name && kitchen.ownerUserId?.name !== "Admin" ? kitchen.ownerUserId?.name : "") || "Applicant"} • {kitchen.contactEmail || (kitchen.ownerUserId?.email !== "cravecart05@gmail.com" ? kitchen.ownerUserId?.email : "") || "-"}
+                      </p>
+                      <p className="text-xs cc-muted mt-0.5">Status: {kitchen.verificationStatus}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button className="cc-btn-primary rounded-lg px-3 py-1.5 text-xs" onClick={() => loadKitchenDetail(kitchen._id)}>
+                        Inspect
+                      </button>
+                      <button className="rounded-lg px-3 py-1.5 text-xs font-semibold bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100 transition shadow-xs" onClick={() => loadKitchenDetail(kitchen._id)}>
+                        ✏️ Edit Decision
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

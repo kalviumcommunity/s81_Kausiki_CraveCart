@@ -172,14 +172,14 @@ adminRouter.get(
   })
 );
 
-// ADMIN: approve/reject kitchen verification
+// ADMIN: approve/reject/re-evaluate kitchen verification
 adminRouter.patch(
   "/kitchens/:id/decision",
   catchAsyncError(async (req, res, next) => {
     const { decision, reason, verifiedBadge } = req.body;
 
-    if (!decision || !["verified", "rejected"].includes(decision)) {
-      return next(new ErrorHandler("decision must be 'verified' or 'rejected'", 400));
+    if (!decision || !["verified", "rejected", "pending"].includes(decision)) {
+      return next(new ErrorHandler("decision must be 'verified', 'rejected', or 'pending'", 400));
     }
 
     const update = {};
@@ -202,6 +202,16 @@ adminRouter.patch(
       update.verificationRejectedReason = String(reason);
       update.verifiedAt = null;
       update.verifiedBadge = false;
+      update["fssai.validationStatus"] = "rejected";
+    }
+
+    if (decision === "pending") {
+      update.verified = false;
+      update.verificationStatus = "pending";
+      update.verificationRejectedReason = "";
+      update.verifiedAt = null;
+      update.verifiedBadge = false;
+      update["fssai.validationStatus"] = "pending";
     }
 
     const kitchen = await KitchenModel.findByIdAndUpdate(req.params.id, { $set: update }, { new: true });

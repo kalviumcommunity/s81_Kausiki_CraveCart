@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { useNavigate, Link } from "react-router-dom";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import { apiFetch } from "../api";
-import { getRedirectForRole, persistAuthSession } from "../roleUtils";
+import { getRedirectForRole, persistAuthSession, getStoredToken, getStoredRole, clearAuthSession } from "../roleUtils";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -15,17 +15,16 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = getStoredToken();
     if (!token) return;
 
     const checkSession = async () => {
       try {
         await apiFetch("/user/me");
-        const role = localStorage.getItem("userRole") || "customer";
+        const role = getStoredRole();
         navigate(getRedirectForRole(role), { replace: true });
       } catch {
-        localStorage.removeItem("token");
-        localStorage.removeItem("userRole");
+        clearAuthSession();
       }
     };
 

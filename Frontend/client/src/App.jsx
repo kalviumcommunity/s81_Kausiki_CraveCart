@@ -12,7 +12,7 @@ import RegisterKitchen from './components/RegisterKitchen';
 import KitchenDashboard from './components/KitchenDashboard';
 import ChooseRole from './components/ChooseRole';
 import AdminPasskeyGate from './components/AdminPasskeyGate';
-import { getStoredRole, clearAuthSession } from './roleUtils';
+import { getStoredRole, getStoredToken, persistAuthSession, clearAuthSession } from './roleUtils';
 import { apiFetch } from './api';
 import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './components/ResetPassword';
@@ -23,7 +23,7 @@ import SearchPage from './components/SearchPage';
 import KitchenOwnerPortal from './components/KitchenOwnerPortal';
 
 function isAuthed() {
-  return Boolean(localStorage.getItem('token'));
+  return Boolean(getStoredToken());
 }
 
 function RequireAuth({ children }) {
@@ -37,7 +37,7 @@ function RequireRole({ children, allowedRoles = [] }) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = getStoredToken();
     if (!token) {
       setChecking(false);
       return;
@@ -47,7 +47,7 @@ function RequireRole({ children, allowedRoles = [] }) {
     apiFetch("/user/me")
       .then((res) => {
         const backendRole = res?.user?.role || "customer";
-        localStorage.setItem("userRole", backendRole);
+        persistAuthSession(token, backendRole);
         setCurrentRole(backendRole);
         setUserEmail(res?.user?.email || "");
       })
@@ -120,21 +120,13 @@ function RequireRole({ children, allowedRoles = [] }) {
   return children;
 }
 
-function RedirectKitchenToDashboard({ children }) {
-  const role = getStoredRole();
-  if (role === "kitchen") {
-    return <Navigate to="/kitchen-dashboard" replace />;
-  }
-  return children;
-}
-
 function App() {
   return (
     <div>
         <BrowserRouter>
           <Routes>
-            <Route path='/' element={<RedirectKitchenToDashboard><Home /></RedirectKitchenToDashboard>} />
-            <Route path='/search' element={<RedirectKitchenToDashboard><SearchPage /></RedirectKitchenToDashboard>} />
+            <Route path='/' element={<Home />} />
+            <Route path='/search' element={<SearchPage />} />
             <Route path='/login' element={<Login/>} />
             <Route path='/signup' element={<Signup/>} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -142,19 +134,17 @@ function App() {
             <Route path="/google-success" element={<GoogleSuccess />}></Route>
             <Route path="/choose-role" element={<RequireAuth><ChooseRole /></RequireAuth>} />
 
-            <Route path="/browse-kitchens" element={<RequireAuth><RedirectKitchenToDashboard><BrowseKitchens /></RedirectKitchenToDashboard></RequireAuth>} />
-            <Route path="/kitchens/:id" element={<RequireAuth><RedirectKitchenToDashboard><KitchenDetail /></RedirectKitchenToDashboard></RequireAuth>} />
-            <Route path="/subscriptions" element={<RequireAuth><RedirectKitchenToDashboard><Subscriptions /></RedirectKitchenToDashboard></RequireAuth>} />
-            <Route path="/my-orders" element={<RequireAuth><RedirectKitchenToDashboard><MyOrders /></RedirectKitchenToDashboard></RequireAuth>} />
+            <Route path="/browse-kitchens" element={<RequireAuth><BrowseKitchens /></RequireAuth>} />
+            <Route path="/kitchens/:id" element={<RequireAuth><KitchenDetail /></RequireAuth>} />
+            <Route path="/subscriptions" element={<RequireAuth><Subscriptions /></RequireAuth>} />
+            <Route path="/my-orders" element={<RequireAuth><MyOrders /></RequireAuth>} />
             <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
-            <Route path="/offers" element={<RequireAuth><RedirectKitchenToDashboard><Offers /></RedirectKitchenToDashboard></RequireAuth>} />
+            <Route path="/offers" element={<RequireAuth><Offers /></RequireAuth>} />
             <Route
               path="/register-kitchen"
               element={
                 <RequireAuth>
-                  <RedirectKitchenToDashboard>
-                    <RegisterKitchen />
-                  </RedirectKitchenToDashboard>
+                  <RegisterKitchen />
                 </RequireAuth>
               }
             />
